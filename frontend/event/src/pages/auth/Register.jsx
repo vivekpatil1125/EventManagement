@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import authService from "../../services/authService";
 import "./Auth.css";
-import illustration from "./illustration.png"; // <-- IMPORT HERE
+import illustration from "./illustration.png"; 
 
 export default function Register() {
   const navigate = useNavigate();
@@ -15,17 +16,29 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    
+    // 1. Basic Frontend Matching Check
     if (form.password !== form.confirmPassword) {
       toast.error("Passwords do not match!");
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      // 2. Transmit Form State variables down to your Axios connection layer
+      // Maps (form.name -> fullName, form.email -> email, form.password -> password)
+      await authService.register(form.name, form.email, form.password);
+      
       toast.success("Account created successfully!");
       navigate("/login");
+    } catch (error) {
+      // 3. Capture and display explicit validation errors thrown back by C# 
+      console.error("Registration failed:", error);
+      toast.error(error || "Registration failed. Check password rules.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

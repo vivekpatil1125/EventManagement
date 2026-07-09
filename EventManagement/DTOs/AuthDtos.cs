@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace EventSync.API.DTOs
+namespace EventManagement.DTOs
 {
     public class RegisterDto
     {
