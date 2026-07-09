@@ -1,0 +1,199 @@
+Here's a concise, professional project prompt you can reuse:
+
+---
+
+# **EventSync – Enterprise Event Management System**
+
+Develop a **modern, responsive, enterprise-level Event Management System** inspired by **Whova, Cvent, Microsoft Events, and Eventbrite** using **React (Vite)** for the frontend and **ASP.NET Core Web API** for the backend with **SQL Server**.
+
+## Tech Stack
+
+* **Frontend:** React, Vite, React Router, Axios, Bootstrap 5, React Icons, React Toastify, Chart.js, FullCalendar
+* **Backend:** ASP.NET Core Web API, Entity Framework Core, SQL Server, JWT Authentication, Role-Based Authorization, BCrypt, Swagger
+
+## User Roles
+
+* **Admin**
+* **Organizer**
+* **Employee**
+
+Use **one common login page**. After authentication, redirect users to their respective dashboards based on their role.
+
+## Modules
+
+### Authentication
+
+* Login
+* Register (Employee only)
+* Forgot Password
+* Reset Password
+* JWT Authentication
+* Role-Based Authorization
+
+### Admin
+
+* Dashboard
+* User Management
+* Organizer Management
+* Employee Management
+* Departments
+* Categories
+* Venues
+* Reports
+* Analytics
+* Settings
+
+### Organizer
+
+* Dashboard
+* Create/Edit/Delete Events
+* Publish/Cancel Events
+* Upload Event Banner
+* Manage Registrations
+* Attendance
+* Announcements
+* Certificates
+* Feedback Analytics
+
+### Employee
+
+* Dashboard
+* Browse/Search Events
+* Register/Cancel Registration
+* View QR Ticket
+* Attendance Status
+* Certificates
+* Notifications
+* Feedback
+
+## Core Modules
+
+* Dashboard
+* Departments
+* Categories
+* Venues
+* Event Management
+* Event Discovery
+* Registration
+* Attendance
+* Certificates (PDF)
+* Feedback & Ratings
+* Announcements
+* Notifications
+* Reports (PDF/Excel)
+* Profile & Change Password
+
+## UI Requirements
+
+* Modern corporate SaaS design inspired by **Whova, Microsoft, and Atlassian**
+* Corporate blue theme
+* Fully responsive
+* Reusable components
+* Sidebar + Top Navbar
+* Professional cards, tables, charts, calendars
+* Smooth animations
+* Glassmorphism where appropriate
+
+## Development Approach
+
+Build **feature by feature**, completing:
+
+1. React UI
+2. ASP.NET API
+3. Database
+4. Integration
+5. Testing
+
+The final application should be **production-ready**, scalable, secure, and portfolio-worthy with clean architecture and enterprise coding standards.
+
+
+//////structure
+EventSync/
+│
+├── Backend/
+│   └── EventSync.API/
+│
+├── Frontend/
+│   └── event/
+│       ├── public/
+│       │
+│       ├── src/
+│       │   ├── assets/
+│       │   │   ├── images/
+│       │   │   │   ├── auth/
+│       │   │   │   ├── backgrounds/
+│       │   │   │   └── logo/
+│       │   │   ├── icons/
+│       │   │   ├── illustrations/
+│       │   │   └── logo/
+│       │   │
+│       │   ├── components/
+│       │   │   ├── common/
+│       │   │   │   ├── Button.jsx
+│       │   │   │   ├── Input.jsx
+│       │   │   │   ├── Loader.jsx
+│       │   │   │   └── Logo.jsx
+│       │   │   │
+│       │   │   ├── forms/
+│       │   │   │   ├── AuthInput.jsx
+│       │   │   │   └── PasswordInput.jsx
+│       │   │   │
+│       │   │   ├── layout/
+│       │   │   │   ├── Navbar.jsx
+│       │   │   │   ├── Sidebar.jsx
+│       │   │   │   └── Footer.jsx
+│       │   │   │
+│       │   │   └── ui/
+│       │   │       ├── Card.jsx
+│       │   │       ├── PrimaryButton.jsx
+│       │   │       └── TextField.jsx
+│       │   │
+│       │   ├── context/
+│       │   │   └── AuthContext.jsx
+│       │   │
+│       │   ├── hooks/
+│       │   │
+│       │   ├── layouts/
+│       │   │   ├── AuthLayout.jsx
+│       │   │   ├── AdminLayout.jsx
+│       │   │   ├── OrganizerLayout.jsx
+│       │   │   ├── EmployeeLayout.jsx
+│       │   │   └── AuthLayout.css
+│       │   │
+│       │   ├── pages/
+│       │   │   ├── auth/
+│       │   │   │   ├── Login.jsx
+│       │   │   │   ├── Login.css
+│       │   │   │   ├── Register.jsx
+│       │   │   │   ├── Register.css
+│       │   │   │   ├── ForgotPassword.jsx
+│       │   │   │   └── ForgotPassword.css
+│       │   │   │
+│       │   │   ├── admin/
+│       │   │   ├── organizer/
+│       │   │   ├── employee/
+│       │   │   └── shared/
+│       │   │
+│       │   ├── routes/
+│       │   │   ├── AppRoutes.jsx
+│       │   │   └── ProtectedRoute.jsx
+│       │   │
+│       │   ├── services/
+│       │   │   ├── api.js
+│       │   │   └── authService.js
+│       │   │
+│       │   ├── styles/
+│       │   │   ├── auth.css
+│       │   │   ├── dashboard.css
+│       │   │   ├── global.css
+│       │   │   └── variables.css
+│       │   │
+│       │   ├── utils/
+│       │   ├── App.jsx
+│       │   └── main.jsx
+│       │
+│       ├── package.json
+│       └── vite.config.js
+│
+├── Database/
+└── Documentation/
