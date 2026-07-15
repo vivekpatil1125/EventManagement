@@ -23,16 +23,16 @@ const authService = {
     },
 
     // Add this method inside your existing authService object in services/authService.js
-forgotPassword: async (email) => {
+// Add this method inside your existing authService object block
+    forgotPassword: async (email) => {
     try {
-        const response = await api.post('/Auth/forgot-password', { email });
+        const response = await api.post('/auth/forgot-password', { email });
         return response.data;
     } catch (error) {
-        const backendErrorMessage = error.response?.data?.message || error.response?.data || error.message;
-        console.error("Forgot password endpoint error:", backendErrorMessage);
-        throw backendErrorMessage;
+        const errorMessage = error.response?.data?.message || error.response?.data || error.message;
+        throw errorMessage;
     }
-},
+    },
     /**
      * Logs in a user by translating form credentials to backend DTO properties
      */

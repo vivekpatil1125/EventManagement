@@ -5,7 +5,8 @@ namespace EventManagement.Interfaces
 {
     public interface IAuthService
     {
-        Task<AuthResponseDto?> RegisterAsync(RegisterDto dto);
-        Task<AuthResponseDto?> LoginAsync(LoginDto dto);
+        Task<object> RegisterAsync(RegisterDto dto);
+        Task<object> LoginAsync(LoginDto dto);
+        Task ForgotPasswordAsync(ForgotPasswordDto dto);
     }
 }

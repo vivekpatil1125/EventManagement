@@ -187,19 +187,40 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  /* Crucial Fixes: Establishes strong boundaries so the image behaves */
+  position: relative;
+  width: 100%;
 }
 
 .auth-illustration {
-  width: 85%;
-  max-width: 600px;
-  height: auto;
-  object-fit: contain;
+  /* Forces the image to completely span the container's width and height */
+  width: 100%;
+  height: 100%;
+  /* Crops seamlessly to fit the container ratio perfectly without distortion */
+  object-fit: cover; 
 }
 
 /* Responsive Overrides */
 @media (max-width: 900px) {
-  .auth-wrapper { flex-direction: column-reverse; }
-  .auth-right { min-height: 200px; flex: none; padding: 20px; }
-  .auth-illustration { max-width: 260px; }
-  .auth-left { padding: 30px 20px; }
+  .auth-wrapper { 
+    flex-direction: column-reverse; 
+  }
+  .auth-right { 
+    height: 300px; /* Explicit height on mobile so the illustration has room to display */
+    flex: none; 
+    padding: 0; /* Remove padding so the image goes edge-to-edge */
+  }
+  .auth-left { 
+    padding: 40px 20px; 
+  }
+}
+
+/* Utility Loading Animation for the Button Spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
