@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Adjusted to match the exact running URL from your Swagger UI screenshot
+// Ensure the secure HTTPS URL on port 7165 is specified
 const API_BASE_URL = 'https://localhost:7165/api'; 
 
 const api = axios.create({
@@ -10,8 +10,7 @@ const api = axios.create({
     },
 });
 
-// This interceptor automatically grabs your JWT token from localStorage 
-// and injects it into the Authorization header for all future requests
+// Automatically append the JWT token to requests if a user is logged in
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');

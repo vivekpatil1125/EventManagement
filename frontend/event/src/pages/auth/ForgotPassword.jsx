@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import authService from "../../services/authService"; // <-- Imported service layer
 import "./Auth.css";
 
 export default function ForgotPassword() {
@@ -15,10 +16,18 @@ export default function ForgotPassword() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    
+    try {
+      // Executes actual HTTP request to your C# backend endpoint
+      await authService.forgotPassword(email);
       toast.success("Password reset link sent to your email!");
+      setEmail(""); // Clear field on success
+    } catch (error) {
+      console.error("Reset request failed:", error);
+      toast.error(typeof error === "string" ? error : "Failed to send reset link. Verify email.");
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   return (

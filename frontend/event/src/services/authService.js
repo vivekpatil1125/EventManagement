@@ -1,63 +1,67 @@
 import api from './api';
 
 const authService = {
-    // 1. Register a new user account
-    register: async (fullName, email, password) => {
+    /**
+     * Registers a new user by translating frontend inputs to backend DTO properties
+     */
+    register: async (userData) => {
+        const payload = {
+            fullName: userData.fullName,
+            email: userData.workEmail, // Maps frontend 'workEmail' to backend 'Email'
+            password: userData.password
+        };
+
         try {
-            const response = await api.post('/Auth/register', {
-                fullName,
-                email,
-                password
-            });
-            
-            // If the server returns a token successfully, log the user in right away
-            if (response.data && response.data.token) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify({
-                    email: response.data.email,
-                    role: response.data.role
-                }));
-            }
+            const response = await api.post('/Auth/register', payload);
             return response.data;
         } catch (error) {
-            console.error("Registration endpoint error:", error.response?.data || error.message);
-            throw error.response?.data || new Error("Registration failed");
+            // Extracts explicit validation error details sent by ASP.NET Core
+            const backendErrorMessage = error.response?.data?.message || error.response?.data || error.message;
+            console.error("Registration endpoint error:", backendErrorMessage);
+            throw backendErrorMessage;
         }
     },
 
-    // 2. Authenticate and log in an existing user
-    login: async (email, password) => {
-        try {
-            const response = await api.post('/Auth/login', {
-                email,
-                password
-            });
+    // Add this method inside your existing authService object in services/authService.js
+forgotPassword: async (email) => {
+    try {
+        const response = await api.post('/Auth/forgot-password', { email });
+        return response.data;
+    } catch (error) {
+        const backendErrorMessage = error.response?.data?.message || error.response?.data || error.message;
+        console.error("Forgot password endpoint error:", backendErrorMessage);
+        throw backendErrorMessage;
+    }
+},
+    /**
+     * Logs in a user by translating form credentials to backend DTO properties
+     */
+    login: async (credentials) => {
+        const payload = {
+            email: credentials.workEmail, // Maps frontend 'workEmail' to backend 'Email'
+            password: credentials.password
+        };
 
-            // Store token and user role payload securely on the client machine
+        try {
+            const response = await api.post('/Auth/login', payload);
             if (response.data && response.data.token) {
                 localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify({
-                    email: response.data.email,
-                    role: response.data.role
-                }));
+                localStorage.setItem('user', JSON.stringify(response.data));
             }
             return response.data;
         } catch (error) {
-            console.error("Login endpoint error:", error.response?.data || error.message);
-            throw error.response?.data || new Error("Login failed");
+            const backendErrorMessage = error.response?.data?.message || error.response?.data || error.message;
+            console.error("Login endpoint error:", backendErrorMessage);
+            throw backendErrorMessage;
         }
     },
 
-    // 3. Clear user tokens on logout
+    /**
+     * Clears local authentication state
+     */
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-    },
-
-    // 4. Client helper utility to quickly retrieve cached user info
-    getCurrentUser: () => {
-        const user = localStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
     }
 };
 
