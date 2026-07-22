@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. Register our custom business logic service
+// 2. Register custom identity business logic services
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 3. Enable CORS for your React Frontend (Port 5173)

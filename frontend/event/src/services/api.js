@@ -10,6 +10,8 @@ const api = axios.create({
     },
 });
 
+
+
 // Automatically append the JWT token to requests if a user is logged in
 api.interceptors.request.use(
     (config) => {
@@ -23,5 +25,33 @@ api.interceptors.request.use(
         return Promise.reject(error);
     }
 );
+
+// --- Data Access Services ---
+
+export const eventService = {
+    getAll: () => api.get('/events'),
+    getById: (id) => api.get(`/events/${id}`),
+    create: (data) => api.post('/events', data), 
+    update: (id, data) => api.put(`/events/${id}`, data),
+    delete: (id) => api.delete(`/events/${id}`),
+};
+
+export const registrationService = {
+    getAll: () => api.get('/registrations'),
+    create: (data) => api.post('/registrations', data),
+    delete: (id) => api.delete(`/registrations/${id}`),
+};
+
+export const attendanceService = {
+    getAll: () => api.get('/attendance'),
+    toggleCheckIn: (id) => api.put(`/attendance/${id}/toggle`),
+};
+
+export const announcementService = {
+    getAll: () => api.get('/announcements'),
+    create: (data) => api.post('/announcements', data),
+};
+
+
 
 export default api;
