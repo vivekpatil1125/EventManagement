@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import axios from "axios";
+import { useAuth } from "../../context/AuthContext"; // Adjust relative path if needed
 import "./Auth.css";
 import illustration from "./illustration.png"; 
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeRole, setActiveRole] = useState("Employee");
   const [form, setForm] = useState({ email: "", password: "", remember: false });
-  const [showPassword, setShowPassword] = useState(false); // Track password visibility status
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, checked, type } = e.target;
@@ -24,13 +27,27 @@ export default function Login() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      toast.success(`Logged in as ${activeRole}`);
-      if (activeRole === "Admin") navigate("/admin/dashboard");
-      else if (activeRole === "Organizer") navigate("/organizer/dashboard");
-      else navigate("/employee/dashboard");
+    try {
+      // Send credentials and active tab's role to the backend database API
+      const response = await axios.post("https://localhost:7165/api/auth/login", {
+        email: form.email,
+        password: form.password,
+        role: activeRole // Enforces strict backend cross-portal validation
+      });
+
+      toast.success(`Logged in successfully as ${activeRole}`);
+      
+      // Save session via AuthContext and trigger proper role-based redirection
+      const token = response.data.token || response.data.Token;
+      login(response.data, token);
+
+    } catch (err) {
+      // Catch backend errors (e.g., wrong password or unauthorized cross-portal login attempt)
+      const errorMsg = err.response?.data?.message || "Login failed. Please check your credentials.";
+      toast.error(errorMsg);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -56,10 +73,9 @@ export default function Login() {
           <form onSubmit={handleLogin} className="auth-form">
             <div className="auth-input-group">
               <label>Email address</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Enter your email" />
+              <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Enter your email" required />
             </div>
 
-            {/* Added relative layout envelope container & eye icon SVG button trigger toggle */}
             <div className="auth-input-group">
               <label>Password</label>
               <div style={{ position: 'relative', width: '100%' }}>
@@ -70,6 +86,7 @@ export default function Login() {
                   onChange={handleChange} 
                   placeholder="••••••••" 
                   style={{ width: '100%', paddingRight: '42px' }}
+                  required
                 />
                 <button
                   type="button"

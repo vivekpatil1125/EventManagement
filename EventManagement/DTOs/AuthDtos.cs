@@ -25,6 +25,9 @@ namespace EventManagement.DTOs
 
         [Required]
         public string Password { get; set; } = string.Empty;
+
+        [Required]
+        public string Role { get; set; } = string.Empty; // Added to restrict cross-portal login
     }
 
     public class AuthResponseDto

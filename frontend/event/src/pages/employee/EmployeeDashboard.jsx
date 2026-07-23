@@ -10,6 +10,13 @@ export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Authenticated User State
+  const [currentUser, setCurrentUser] = useState({
+    name: 'Employee',
+    email: 'employee@eventsync.com',
+    role: 'Employee'
+  });
+
   // Core Operational States (Guaranteed Arrays)
   const [allEvents, setAllEvents] = useState([]);
   const [registeredEvents, setRegisteredEvents] = useState([]);
@@ -21,8 +28,8 @@ export default function EmployeeDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [formData, setFormData] = useState({
-    name: 'Ethan Employee',
-    email: 'ethan.employee@eventsync.com',
+    name: '',
+    email: '',
     notes: ''
   });
   
@@ -40,34 +47,75 @@ export default function EmployeeDashboard() {
     };
   };
 
+  // Decode JWT or extract user info on mount
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        const payload = JSON.parse(jsonPayload);
+
+        // Extract name and email supporting standard ASP.NET Core claim types & standard JWT keys
+        const extractedName = 
+          payload.name || 
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || 
+          payload.unique_name || 
+          payload.sub || 
+          'Employee';
+
+        const extractedEmail = 
+          payload.email || 
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || 
+          'employee@eventsync.com';
+
+        const extractedRole = 
+          payload.role || 
+          payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 
+          'Employee';
+
+        setCurrentUser({
+          name: extractedName,
+          email: extractedEmail,
+          role: extractedRole
+        });
+
+        setFormData(prev => ({
+          ...prev,
+          name: extractedName,
+          email: extractedEmail
+        }));
+      } catch (err) {
+        console.error("Failed to decode auth token:", err);
+      }
+    }
     fetchDashboardData();
   }, []);
 
   // Generate local QR codes whenever registered events update
   useEffect(() => {
+    const generateQRCodes = async () => {
+      const codes = {};
+      for (const t of registeredEvents) {
+        const qrPayload = `ES-PASS:${t.ticketCode}|${t.title}|${t.attendeeEmail}`;
+
+        try {
+          const url = await QRCode.toDataURL(qrPayload, { 
+            width: 250, 
+            margin: 4,
+            errorCorrectionLevel: 'M'
+          });
+          codes[t.id] = url;
+        } catch (err) {
+          console.error("QR generation error:", err);
+        }
+      }
+      setQrCodes(codes);
+    };
+
     generateQRCodes();
   }, [registeredEvents]);
-
-  const generateQRCodes = async () => {
-    const codes = {};
-    for (const t of registeredEvents) {
-      // Ultra-clean, concise payload for maximum scannability on screens
-      const qrPayload = `ES-PASS:${t.ticketCode}|${t.title}|${t.attendeeEmail}`;
-
-      try {
-        const url = await QRCode.toDataURL(qrPayload, { 
-          width: 250, 
-          margin: 4,
-          errorCorrectionLevel: 'M'
-        });
-        codes[t.id] = url;
-      } catch (err) {
-        console.error("QR generation error:", err);
-      }
-    }
-    setQrCodes(codes);
-  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -97,17 +145,31 @@ export default function EmployeeDashboard() {
 
       const mappedPasses = rawRegistrations.map(r => {
         const eventObj = r.event || r.Event || {};
+        const userObj = r.user || r.User || {};
         const id = eventObj.id || eventObj.Id || r.eventId || r.EventId || r.Id || r.id;
         
+        // Robust fallback checking across all possible name / email properties in backend response
+        const resolvedName = 
+          r.name || r.Name || 
+          r.fullName || r.FullName || 
+          userObj.name || userObj.Name || 
+          userObj.fullName || userObj.FullName || 
+          currentUser.name;
+
+        const resolvedEmail = 
+          r.email || r.Email || 
+          userObj.email || userObj.Email || 
+          currentUser.email;
+
         return {
           id: id,
           title: eventObj.title || eventObj.Title || r.title || r.Title || 'Registered Event',
           date: eventObj.date || eventObj.Date || '',
           location: eventObj.location || eventObj.Location || 'Remote',
           type: eventObj.type || eventObj.Type || 'CONFERENCE',
-          ticketCode: r.id || r.Id || 'REG-PENDING',
-          attendeeName: r.name || r.Name || 'Ethan Employee',
-          attendeeEmail: r.email || r.Email || 'ethan.employee@eventsync.com',
+          ticketCode: r.id || r.Id || r.ticketCode || 'REG-PENDING',
+          attendeeName: resolvedName,
+          attendeeEmail: resolvedEmail,
           status: 'CONFIRMED'
         };
       });
@@ -162,11 +224,9 @@ export default function EmployeeDashboard() {
     }
   };
 
-  // Direct PDF Download using imported jsPDF
   const handleDownloadPDF = (ticket) => {
     const doc = new jsPDF();
 
-    // Professional Header Banner
     doc.setFillColor(30, 58, 138);
     doc.rect(0, 0, 210, 45, 'F');
     
@@ -174,7 +234,6 @@ export default function EmployeeDashboard() {
     doc.setFontSize(22);
     doc.text("EventSync Enterprise Pass", 20, 28);
 
-    // Event & Attendee Specifications
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(16);
     doc.text(`${ticket.title}`, 20, 65);
@@ -207,6 +266,13 @@ export default function EmployeeDashboard() {
     doc.setFontSize(13);
     doc.text(`${ticket.type || 'CONFERENCE'} (Confirmed)`, 20, 157);
 
+    if (qrCodes[ticket.id]) {
+      doc.addImage(qrCodes[ticket.id], "PNG", 145, 60, 45, 45);
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Scan to Verify", 147, 110);
+    }
+    
     doc.setLineWidth(0.5);
     doc.setDrawColor(203, 213, 225);
     doc.line(20, 175, 190, 175);
@@ -368,10 +434,10 @@ export default function EmployeeDashboard() {
             </button>
 
             <div className="user-profile">
-              <div className="avatar">E</div>
+              <div className="avatar">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'E'}</div>
               <div className="user-info">
-                <div className="name" style={{ fontSize: '0.9rem', fontWeight: 700 }}>Ethan Employee</div>
-                <div className="role" style={{ fontSize: '11px', color: '#64748b' }}>Employee</div>
+                <div className="name" style={{ fontSize: '0.9rem', fontWeight: 700 }}>{currentUser.name}</div>
+                <div className="role" style={{ fontSize: '11px', color: '#64748b' }}>{currentUser.role}</div>
               </div>
             </div>
           </div>
@@ -398,7 +464,7 @@ export default function EmployeeDashboard() {
                   <section className="hero-banner" style={{ display: 'flex', background: 'linear-gradient(90deg, #1d4ed8 0%, #172554 100%)', borderRadius: '16px', overflow: 'hidden', color: 'white', minHeight: '220px', marginBottom: '24px' }}>
                     <div className="hero-left" style={{ flex: '1.2', padding: '36px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', gap: '12px' }}>
                       <span className="welcome-tag" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', color: '#93c5fd', textTransform: 'uppercase' }}>WELCOME BACK</span>
-                      <h3 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Hey Ethan 👋</h3>
+                      <h3 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Hey {currentUser.name.split(' ')[0]} 👋</h3>
                       <p style={{ margin: '4px 0 12px 0', fontSize: '0.95rem', color: '#93c5fd', lineHeight: 1.5, maxWidth: '480px' }}>
                         Here's what's happening across your organization. Discover upcoming database events and manage your attendance.
                       </p>
@@ -461,7 +527,7 @@ export default function EmployeeDashboard() {
                 </>
               )}
 
-              {/* VIEW TWO: DISCOVER & REGISTER FOR DATABASE EVENTS */}
+              {/* VIEW TWO: DISCOVER & REGISTER */}
               {activeTab === 'Discover' && (
                 <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
                   <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Available Organization Events (From Database)</h3>
@@ -493,7 +559,7 @@ export default function EmployeeDashboard() {
                 </section>
               )}
 
-              {/* VIEW THREE: USER REGISTERED PASSES WORKSPACE */}
+              {/* VIEW THREE: MY EVENTS */}
               {activeTab === 'My Events' && (
                 <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
                   <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Your Registered Corporate Passes</h3>
@@ -528,7 +594,7 @@ export default function EmployeeDashboard() {
                 </section>
               )}
 
-              {/* VIEW FOUR: TICKETS (FORMATTED TEXT QR CODE & DIRECT PDF DOWNLOAD) */}
+              {/* VIEW FOUR: TICKETS */}
               {activeTab === 'Tickets' && (
                 <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -546,7 +612,6 @@ export default function EmployeeDashboard() {
                         return (
                           <div key={t.id} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             
-                            {/* Card Top Banner */}
                             <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
                                 <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', opacity: 0.85 }}>{t.type || 'EVENT'} PASS</span>
@@ -555,7 +620,6 @@ export default function EmployeeDashboard() {
                               <span style={{ fontSize: '10px', fontWeight: 700, background: '#10b981', color: '#fff', padding: '3px 8px', borderRadius: '4px' }}>{t.status}</span>
                             </div>
 
-                            {/* Card Middle Content with Scannable QR */}
                             <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <div>
@@ -574,25 +638,24 @@ export default function EmployeeDashboard() {
                               </div>
 
                               <div style={{ background: '#fff', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
-  {localQrSrc ? (
-    <img 
-      src={localQrSrc} 
-      alt="Scannable Ticket QR Code" 
-      style={{ 
-        width: '140px', 
-        height: '140px', 
-        display: 'block', 
-        imageRendering: 'pixelated' // Keeps QR pixels sharp and scannable
-      }} 
-    />
-  ) : (
-    <div style={{ width: '140px', height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#64748b' }}>Loading...</div>
-  )}
-  <span style={{ fontSize: '9px', fontWeight: 700, color: '#64748b', marginTop: '4px', display: 'block' }}>Scan to Verify</span>
-</div>
+                                {localQrSrc ? (
+                                  <img 
+                                    src={localQrSrc} 
+                                    alt="Scannable Ticket QR Code" 
+                                    style={{ 
+                                      width: '140px', 
+                                      height: '140px', 
+                                      display: 'block', 
+                                      imageRendering: 'pixelated'
+                                    }} 
+                                  />
+                                ) : (
+                                  <div style={{ width: '140px', height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#64748b' }}>Loading...</div>
+                                )}
+                                <span style={{ fontSize: '9px', fontWeight: 700, color: '#64748b', marginTop: '4px', display: 'block' }}>Scan to Verify</span>
+                              </div>
                             </div>
 
-                            {/* Card Footer Direct Download Action */}
                             <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '12px 20px', display: 'flex', justifyContent: 'flex-end' }}>
                               <button 
                                 onClick={() => handleDownloadPDF(t)}
@@ -660,10 +723,12 @@ export default function EmployeeDashboard() {
                 <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', maxWidth: '500px' }}>
                   <h3 style={{ marginBottom: '20px', fontWeight: 700 }}>Account Specifications</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800 }}>E</div>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800 }}>
+                      {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'E'}
+                    </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Ethan Employee</h4>
-                      <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748b' }}>Employee Role • EventSync Member</p>
+                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{currentUser.name}</h4>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748b' }}>{currentUser.email} • {currentUser.role}</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: '#475569' }}>

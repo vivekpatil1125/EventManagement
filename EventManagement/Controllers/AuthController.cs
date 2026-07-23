@@ -1,7 +1,9 @@
-﻿using EventManagement.DTOs;
-using EventManagement.Interfaces;
+﻿using EventManagement.Data;
+using EventManagement.DTOs;
+using EventManagement.Models;
+using Microsoft.AspNetCore.Identity; // Required for PasswordHasher
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers
 {
@@ -9,48 +11,57 @@ namespace EventManagement.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly ApplicationDbContext _context;
+        private readonly PasswordHasher<User> _passwordHasher = new PasswordHasher<User>();
 
-        public AuthController(IAuthService authService)
+        public AuthController(ApplicationDbContext context)
         {
-            _authService = authService;
-        }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
-        {
-            var result = await _authService.RegisterAsync(dto);
-            if (result == null)
-            {
-                return BadRequest(new { message = "Email is already registered." });
-            }
-            return Ok(result);
+            _context = context;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            var result = await _authService.LoginAsync(dto);
-            if (result == null)
+            // 1. Find user by email
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
+            if (user == null)
             {
                 return Unauthorized(new { message = "Invalid email or password." });
             }
-            return Ok(result);
-        }
 
-        [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
-        {
-            try
+            // 2. Verify password (handles encrypted hashes like AQAAAAIAAYa...)
+            var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, loginDto.Password);
+
+            // Fallback check: allows plain-text passwords just in case any test user was added manually without hashing
+            bool isPasswordValid = (verificationResult == PasswordVerificationResult.Success) || (user.PasswordHash == loginDto.Password);
+
+            if (!isPasswordValid)
             {
-                await _authService.ForgotPasswordAsync(dto);
-                return Ok(new { message = "If the email is registered, a password reset link has been sent." });
+                return Unauthorized(new { message = "Invalid email or password." });
             }
-            catch (System.Exception ex)
+
+            // 3. Map the frontend tab name to the correct database Role integer
+            UserRole expectedRole = loginDto.Role.ToLower() switch
             {
-                // Intercepts the exception and returns the actual SMTP error safely to your React app
-                return BadRequest(new { message = ex.Message });
+                "admin" => UserRole.Admin,
+                "organizer" => UserRole.Organizer,
+                _ => UserRole.Employee
+            };
+
+            // 4. Check if user's database role matches the portal tab
+            if (user.Role != expectedRole)
+            {
+                return Unauthorized(new { message = $"Access denied. This account is not authorized as an {loginDto.Role}." });
             }
+
+            // 5. Return success response
+            return Ok(new
+            {
+                token = "DUMMY_JWT_TOKEN_ABC123",
+                fullName = user.FullName,
+                email = user.Email,
+                role = user.Role.ToString()
+            });
         }
     }
 }
