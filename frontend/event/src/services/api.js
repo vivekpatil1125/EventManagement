@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Ensure the secure HTTPS URL on port 7165 is specified
 const API_BASE_URL = 'https://localhost:7165/api'; 
 
 const api = axios.create({
@@ -10,18 +9,26 @@ const api = axios.create({
     },
 });
 
-
-
-// Automatically append the JWT token to requests if a user is logged in
+// Append Bearer token if valid
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        if (token) {
+        if (token && typeof token === 'string' && token.split('.').length === 3) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
+    (error) => Promise.reject(error)
+);
+
+// Auto-clean stale credentials on 401
+api.interceptors.response.use(
+    (response) => response,
     (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
         return Promise.reject(error);
     }
 );
@@ -29,6 +36,7 @@ api.interceptors.request.use(
 // --- Data Access Services ---
 
 export const eventService = {
+    // Line 40: /events
     getAll: () => api.get('/events'),
     getById: (id) => api.get(`/events/${id}`),
     create: (data) => api.post('/events', data), 
@@ -43,7 +51,9 @@ export const registrationService = {
 };
 
 export const attendanceService = {
+    // Line 55: matches AttendanceController
     getAll: () => api.get('/attendance'),
+    checkIn: (eventId) => api.post(`/attendance/check-in/${eventId}`),
     toggleCheckIn: (id) => api.put(`/attendance/${id}/toggle`),
 };
 
@@ -51,7 +61,5 @@ export const announcementService = {
     getAll: () => api.get('/announcements'),
     create: (data) => api.post('/announcements', data),
 };
-
-
 
 export default api;

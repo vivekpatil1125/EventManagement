@@ -1,36 +1,21 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace EventSync.Models
+namespace EventSync.Models // or your correct namespace
 {
     public class Registration
     {
-        [Key]
-        public string Id { get; set; } = $"REG-{Guid.NewGuid().ToString()[..4].ToUpper()}";
-
-        [Required]
-        [StringLength(100)]
+        public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
-
-        [Required]
-        [EmailAddress]
         public string Email { get; set; } = string.Empty;
-
-        [Required]
         public int EventId { get; set; }
-
-        [ForeignKey("EventId")]
         public Event? Event { get; set; }
+        public string Tier { get; set; } = "Standard";
 
-        [Required]
-        [StringLength(30)]
-        public string Tier { get; set; } = "General"; // VIP, General
+        // Ensure this property exists
+        public DateTime RegistrationDate { get; set; }
 
-        public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
-
-        [Required]
-        [StringLength(20)]
-        public string Status { get; set; } = "CONFIRMED"; // CONFIRMED, PENDING
+        public string Status { get; set; } = "Confirmed";
+        public bool IsCheckedIn { get; set; }
+        public DateTime? CheckedInAt { get; set; }
     }
 }

@@ -5,32 +5,31 @@ namespace EventSync.Models
 {
     public class Event
     {
-        [Key]
         public int Id { get; set; }
 
         [Required]
         [StringLength(100)]
         public string Title { get; set; } = string.Empty;
 
+        public string? Description { get; set; } = string.Empty;
         [Required]
         public DateTime Date { get; set; }
 
         [Required]
-        [StringLength(150)]
         public string Location { get; set; } = string.Empty;
 
         [Required]
+        [StringLength(50)]
+        public string Department { get; set; } = "IT"; // 👈 IT, SAP, HR, Finance, Operations, Marketing
+
         public int Capacity { get; set; }
+        public int Registered { get; set; }
 
-        public int Registered { get; set; } = 0;
-
-        [Required]
         [StringLength(30)]
-        public string Type { get; set; } = "CONFERENCE"; // CONFERENCE, WORKSHOP, SEMINAR
+        public string Type { get; set; } = "CONFERENCE";
 
-        [Required]
         [StringLength(20)]
-        public string Status { get; set; } = "PUBLISHED"; // PUBLISHED, DRAFT
+        public string Status { get; set; } = "PUBLISHED";
 
         public string Img { get; set; } = string.Empty;
     }

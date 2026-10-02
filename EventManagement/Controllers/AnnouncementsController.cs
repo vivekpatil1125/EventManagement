@@ -3,6 +3,10 @@ using EventManagement.Models;
 using EventSync.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EventManagement.Controllers
 {
@@ -19,26 +23,25 @@ namespace EventManagement.Controllers
 
         // GET: api/announcements
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Announcement>>> GetAnnouncements()
+        public async Task<IActionResult> GetAnnouncements()
         {
-            return await _context.Announcements
-                .Include(a => a.Event)
+            var announcements = await _context.Announcements
+                .AsNoTracking()
                 .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
+
+            return Ok(announcements);
         }
 
         // POST: api/announcements
         [HttpPost]
-        public async Task<ActionResult<Announcement>> PostAnnouncement(Announcement announcement)
+        public async Task<IActionResult> PostAnnouncement([FromBody] Announcement announcement)
         {
             announcement.Timestamp = DateTime.UtcNow;
             _context.Announcements.Add(announcement);
             await _context.SaveChangesAsync();
 
-            // Load relational data before responding
-            await _context.Entry(announcement).Reference(a => a.Event).LoadAsync();
-
-            return CreatedAtRoute(new { id = announcement.Id }, announcement);
+            return Ok(announcement);
         }
 
         // DELETE: api/announcements/5

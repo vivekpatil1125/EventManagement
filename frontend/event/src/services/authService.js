@@ -8,7 +8,9 @@ const authService = {
         const payload = {
             fullName: userData.fullName,
             email: userData.workEmail, // Maps frontend 'workEmail' to backend 'Email'
-            password: userData.password
+            password: userData.password,
+            role: userData.role || "Employee", // Maps selected role (Employee / Organizer)
+            department: userData.department // Added department column
         };
 
         try {
@@ -22,24 +24,27 @@ const authService = {
         }
     },
 
-    // Add this method inside your existing authService object in services/authService.js
-// Add this method inside your existing authService object block
+    /**
+     * Sends password reset request
+     */
     forgotPassword: async (email) => {
-    try {
-        const response = await api.post('/auth/forgot-password', { email });
-        return response.data;
-    } catch (error) {
-        const errorMessage = error.response?.data?.message || error.response?.data || error.message;
-        throw errorMessage;
-    }
+        try {
+            const response = await api.post('/auth/forgot-password', { email });
+            return response.data;
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.response?.data || error.message;
+            throw errorMessage;
+        }
     },
+
     /**
      * Logs in a user by translating form credentials to backend DTO properties
      */
     login: async (credentials) => {
         const payload = {
-            email: credentials.workEmail, // Maps frontend 'workEmail' to backend 'Email'
-            password: credentials.password
+            email: credentials.email || credentials.workEmail, // Fixes undefined email
+            password: credentials.password,
+            role: credentials.role
         };
 
         try {
@@ -55,7 +60,6 @@ const authService = {
             throw backendErrorMessage;
         }
     },
-
     /**
      * Clears local authentication state
      */

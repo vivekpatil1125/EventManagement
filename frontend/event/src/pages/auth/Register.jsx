@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import authService from "../../services/authService";
 import "./Auth.css";
@@ -7,11 +7,26 @@ import illustration from "./illustration.png";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Read role from query param (?role=Organizer or ?role=Employee), defaulting to Employee
+  const initialRole = searchParams.get("role") === "Organizer" ? "Organizer" : "Employee";
+  const [selectedRole, setSelectedRole] = useState(initialRole);
+
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [form, setForm] = useState({ 
+    name: "", 
+    email: "", 
+    department: "IT", // Default department option
+    password: "", 
+    confirmPassword: "" 
+  });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Available corporate departments
+  const departments = ["IT", "SAP", "HR", "Finance", "Operations", "Marketing"];
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -34,6 +49,10 @@ export default function Register() {
       newErrors.email = "Work email is required.";
     } else if (!emailRegex.test(form.email)) {
       newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (!form.department) {
+      newErrors.department = "Department selection is required.";
     }
 
     if (!form.password) {
@@ -61,25 +80,27 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // FIX: Groups form variables into the exact object payload structure your authService expects
+      // Passes selected department and role along with existing fields
       await authService.register({
         fullName: form.name,
         workEmail: form.email,
-        password: form.password
+        department: form.department,
+        password: form.password,
+        role: selectedRole
       });
       
-      toast.success("Account created successfully!");
+      toast.success(`Account created successfully as ${selectedRole}!`);
       navigate("/login");
     } catch (error) {
       console.error("Registration failed:", error);
       
-      // FIX: Maps the error properties directly from the object thrown by authService.js
       if (error && error.errors) {
         const backendErrors = error.errors;
         const mappedErrors = {};
 
         if (backendErrors.FullName) mappedErrors.name = backendErrors.FullName.join(" ");
         if (backendErrors.Email) mappedErrors.email = backendErrors.Email.join(" ");
+        if (backendErrors.Department) mappedErrors.department = backendErrors.Department.join(" ");
         if (backendErrors.Password) mappedErrors.password = backendErrors.Password.join(" ");
 
         setErrors(mappedErrors);
@@ -99,6 +120,20 @@ export default function Register() {
         <div className="auth-form-container">
           <h1 className="auth-title">Create Account</h1>
           <p className="auth-subtitle">Join EventSync to explore and manage enterprise events.</p>
+
+          {/* Role selector tabs for Employee and Organizer */}
+          <div className="auth-role-tabs">
+            {["Employee", "Organizer"].map((role) => (
+              <button
+                key={role}
+                type="button"
+                className={`auth-role-tab ${selectedRole === role ? "active" : ""}`}
+                onClick={() => setSelectedRole(role)}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
 
           <form onSubmit={handleRegister} className="auth-form" noValidate>
             <div className="auth-input-group">
@@ -125,6 +160,33 @@ export default function Register() {
                 style={errors.email ? { borderColor: '#d92d20' } : {}}
               />
               {errors.email && <span style={{ color: '#d92d20', fontSize: '0.825rem', marginTop: '6px', fontWeight: '500' }}>{errors.email}</span>}
+            </div>
+
+            {/* Department Dropdown Selection */}
+            <div className="auth-input-group">
+              <label>Department</label>
+              <select
+                name="department"
+                value={form.department}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#fff',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  ...(errors.department ? { borderColor: '#d92d20' } : {})
+                }}
+              >
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              {errors.department && <span style={{ color: '#d92d20', fontSize: '0.825rem', marginTop: '6px', fontWeight: '500' }}>{errors.department}</span>}
             </div>
 
             <div className="auth-input-group">
@@ -188,7 +250,7 @@ export default function Register() {
             </div>
 
             <button type="submit" className="auth-btn-primary" disabled={loading}>
-              {loading ? "Creating Account..." : "Sign up"}
+              {loading ? "Creating Account..." : `Sign up as ${selectedRole}`}
             </button>
 
             <p className="auth-prompt">

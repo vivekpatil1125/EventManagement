@@ -1,0 +1,112 @@
+using EventManagement.Data;
+using EventManagement.Models;
+using EventSync.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+namespace EventManagement.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AttendanceController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+
+        public AttendanceController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/attendance
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendance()
+        {
+            var userEmail = User.FindFirstValue(ClaimTypes.Email)
+                           ?? User.FindFirstValue(ClaimTypes.Name)
+                           ?? User.Identity?.Name;
+
+            var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+
+            // 1. ORGANIZER: Sees attendance records ONLY for events in their Department
+            if (currentUser != null && currentUser.Role == UserRole.Organizer)
+            {
+                var departmentAttendance = await _context.Attendances
+                    .Include(a => a.Event)
+                    .Where(a => a.Event != null && a.Event.Department == currentUser.Department)
+                    .ToListAsync();
+
+                return Ok(departmentAttendance);
+            }
+
+            // 2. EMPLOYEE: Sees ONLY their own check-in/attendance logs
+            if (currentUser != null && currentUser.Role == UserRole.Employee)
+            {
+                var employeeAttendance = await _context.Attendances
+                    .Include(a => a.Event)
+                    .Where(a => EF.Property<string>(a, "AttendeeEmail") == currentUser.Email ||
+                                EF.Property<string>(a, "Email") == currentUser.Email ||
+                                EF.Property<string>(a, "Name") == currentUser.FullName ||
+                                EF.Property<string>(a, "AttendeeName") == currentUser.FullName)
+                    .ToListAsync();
+
+                return Ok(employeeAttendance);
+            }
+
+            // 3. ADMIN: Sees all system attendance records
+            var allAttendances = await _context.Attendances
+                .Include(a => a.Event)
+                .ToListAsync();
+
+            return Ok(allAttendances);
+        }
+
+        // PUT: api/attendance/5/toggle (Assuming Id is int. If your Id is string/Guid, change int to string and remove int.Parse)
+        [HttpPut("{id}/toggle")]
+        public async Task<IActionResult> ToggleCheckIn(int id)
+        {
+            var record = await _context.Attendances.FindAsync(id);
+            if (record == null)
+            {
+                return NotFound(new { message = "Attendance record not found." });
+            }
+
+            // Toggle state (Ensure these match your Attendance model properties)
+            // If your model uses IsCheckedIn / CheckedInAt instead, update these lines:
+            // record.IsCheckedIn = !record.IsCheckedIn;
+            
+            await _context.SaveChangesAsync();
+            return Ok(record);
+        }
+
+        // POST: api/attendance
+        [HttpPost]
+        public async Task<ActionResult<Attendance>> PostAttendance(Attendance attendance)
+        {
+            _context.Attendances.Add(attendance);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
+        }
+
+        // DELETE: api/attendance/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteAttendance(int id)
+        {
+            var record = await _context.Attendances.FindAsync(id);
+            if (record == null)
+            {
+                return NotFound(new { message = "Record not found." });
+            }
+
+            _context.Attendances.Remove(record);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+    }
+}

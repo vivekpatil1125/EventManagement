@@ -1,11 +1,18 @@
 ﻿using EventManagement.Data;
 using EventManagement.Models;
 using EventSync.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+using RegistrationEntity = EventSync.Models.Registration;
 
 namespace EventManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class RegistrationsController : ControllerBase
@@ -19,99 +26,140 @@ namespace EventManagement.Controllers
 
         // GET: api/registrations
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Registration>>> GetRegistrations()
+        public async Task<IActionResult> GetRegistrations()
         {
-            return await _context.Registrations.Include(r => r.Event).ToListAsync();
-        }
+            var userEmail = User.FindFirstValue(ClaimTypes.Email)
+                           ?? User.FindFirstValue(ClaimTypes.Name)
+                           ?? User.FindFirstValue("email")
+                           ?? User.Identity?.Name;
 
-        // GET: api/registrations/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Registration>> GetRegistration(string id)
-        {
-            var registration = await _context.Registrations.Include(r => r.Event)
-                                                           .FirstOrDefaultAsync(r => r.Id == id);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
 
-            if (registration == null)
+            if (currentUser != null && currentUser.Role == UserRole.Organizer)
             {
-                return NotFound(new { message = $"Registration {id} not found." });
+                var departmentRegistrations = await _context.Registrations
+                    .Include(r => r.Event)
+                    .Where(r => r.Event != null && r.Event.Department == currentUser.Department)
+                    .ToListAsync();
+
+                return Ok(departmentRegistrations);
             }
 
-            return registration;
+            if (currentUser != null && currentUser.Role == UserRole.Employee)
+            {
+                var userRegistrations = await _context.Registrations
+                    .Include(r => r.Event)
+                    .Where(r => r.Email == currentUser.Email)
+                    .ToListAsync();
+
+                return Ok(userRegistrations);
+            }
+
+            // Fallback safety: if user isn't found in database entity but we have a token email, filter by it anyway!
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var fallbackRegistrations = await _context.Registrations
+                    .Include(r => r.Event)
+                    .Where(r => r.Email == userEmail)
+                    .ToListAsync();
+
+                return Ok(fallbackRegistrations);
+            }
+
+            return Unauthorized(new { message = "Unable to identify user from token claims." });
         }
 
         // POST: api/registrations
         [HttpPost]
-        public async Task<ActionResult<Registration>> PostRegistration(Registration registration)
+        public async Task<IActionResult> CreateRegistration([FromBody] EventRegisterDto dto)
         {
-            var targetEvent = await _context.Events.FindAsync(registration.EventId);
+            if (dto == null)
+            {
+                return BadRequest(new { message = "Registration data is required." });
+            }
+
+            var targetEvent = await _context.Events.FindAsync(dto.EventId);
             if (targetEvent == null)
             {
-                return BadRequest(new { message = "Cannot register for a non-existent event." });
+                return NotFound(new { message = $"Event with ID {dto.EventId} not found." });
             }
 
-            if (targetEvent.Registered >= targetEvent.Capacity)
-            {
-                return BadRequest(new { message = "Registration failed. This event is at maximum capacity." });
-            }
+            var attendeeEmail = !string.IsNullOrEmpty(dto.Email)
+                ? dto.Email
+                : (User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name ?? "employee@eventsync.com");
 
-            // 1. Increment event registration counter
-            targetEvent.Registered += 1;
+            var attendeeName = !string.IsNullOrEmpty(dto.Name)
+                ? dto.Name
+                : (User.FindFirstValue(ClaimTypes.Name) ?? "Attendee");
 
-            // 2. Generate a clean random alphanumeric string for ID if not provided
-            if (string.IsNullOrEmpty(registration.Id))
+            var newRegistration = new RegistrationEntity
             {
-                registration.Id = "REG-" + Guid.NewGuid().ToString().Substring(0, 6).ToUpper();
-            }
-            registration.RegistrationDate = DateTime.UtcNow;
-
-            // 3. AUTOMATION: Create the corresponding Attendance entry for the gate sheet
-            var attendanceRecord = new Attendance
-            {
-                Id = "ATT-" + Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
-                EventId = registration.EventId,
-                Name = registration.Name,
-                TicketCode = "TKT-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper(),
-                CheckedIn = false,
-                Time = "--:--"
+                Id = Guid.NewGuid().ToString(),
+                Name = attendeeName,
+                Email = attendeeEmail,
+                EventId = dto.EventId,
+                Tier = string.IsNullOrEmpty(dto.Tier) ? "Standard" : dto.Tier,
+                RegistrationDate = DateTime.UtcNow,
+                Status = "Confirmed",
+                IsCheckedIn = false
             };
 
-            _context.Registrations.Add(registration);
-            _context.Attendances.Add(attendanceRecord); // Save both in a single database transaction
+            _context.Registrations.Add(newRegistration);
+            targetEvent.Registered += 1;
 
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetRegistration), new { id = registration.Id }, registration);
+            return Ok(new
+            {
+                message = "Registration successful!",
+                registrationId = newRegistration.Id
+            });
         }
 
-        // DELETE: api/registrations/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRegistration(string id)
+        // POST: api/registrations/{id}/check-in
+        [HttpPost("{id}/check-in")]
+        public async Task<IActionResult> CheckIn(string id)
         {
-            var registration = await _context.Registrations.FindAsync(id);
-            if (registration == null)
+            try
             {
-                return NotFound(new { message = $"Registration {id} not found." });
-            }
+                var registration = await _context.Registrations
+                    .Include(r => r.Event)
+                    .FirstOrDefaultAsync(r => r.Id == id);
 
-            var targetEvent = await _context.Events.FindAsync(registration.EventId);
-            if (targetEvent != null && targetEvent.Registered > 0)
+                if (registration == null)
+                {
+                    return NotFound(new { message = "Registration record not found." });
+                }
+
+                if (registration.IsCheckedIn)
+                {
+                    return BadRequest(new { message = "You are already checked in for this event." });
+                }
+
+                registration.IsCheckedIn = true;
+                registration.CheckedInAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Check-in successful!",
+                    isCheckedIn = true,
+                    checkedInAt = registration.CheckedInAt
+                });
+            }
+            catch (Exception ex)
             {
-                targetEvent.Registered -= 1;
+                return StatusCode(500, new { message = "Internal server error during check-in.", details = ex.Message });
             }
-
-            // AUTOMATION: Clean up their attendance record if they cancel their registration
-            var matchingAttendance = await _context.Attendances
-                .FirstOrDefaultAsync(a => a.EventId == registration.EventId && a.Name == registration.Name);
-
-            if (matchingAttendance != null)
-            {
-                _context.Attendances.Remove(matchingAttendance);
-            }
-
-            _context.Registrations.Remove(registration);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
+    }
+
+    public class EventRegisterDto
+    {
+        public int EventId { get; set; }
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string? Tier { get; set; }
     }
 }

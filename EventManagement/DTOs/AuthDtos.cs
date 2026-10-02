@@ -15,6 +15,14 @@ namespace EventManagement.DTOs
         [Required]
         [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters long.")]
         public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string Department { get; set; } = "IT"; // Added Department field
+
+        [Required]
+        [RegularExpression("^(Employee|Organizer)$", ErrorMessage = "Role must be either 'Employee' or 'Organizer'.")]
+        public string Role { get; set; } = "Employee";
     }
 
     public class LoginDto
@@ -27,7 +35,7 @@ namespace EventManagement.DTOs
         public string Password { get; set; } = string.Empty;
 
         [Required]
-        public string Role { get; set; } = string.Empty; // Added to restrict cross-portal login
+        public string Role { get; set; } = string.Empty;
     }
 
     public class AuthResponseDto

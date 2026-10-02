@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext"; // Adjust relative path if needed
+import { useAuth } from "../../context/AuthContext";
+import authService from "../../services/authService"; // 1. Use authService
 import "./Auth.css";
 import illustration from "./illustration.png"; 
 
@@ -28,22 +28,32 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // Send credentials and active tab's role to the backend database API
-      const response = await axios.post("https://localhost:7165/api/auth/login", {
+      // 2. Call authService with email, password, and activeRole
+      const data = await authService.login({
         email: form.email,
         password: form.password,
-        role: activeRole // Enforces strict backend cross-portal validation
+        role: activeRole
       });
 
       toast.success(`Logged in successfully as ${activeRole}`);
       
-      // Save session via AuthContext and trigger proper role-based redirection
-      const token = response.data.token || response.data.Token;
-      login(response.data, token);
+      const token = data.token || data.Token;
+      login(data, token);
+
+      // 3. Route user to their role dashboard
+      const targetRole = activeRole.toLowerCase();
+      if (targetRole === "admin") {
+        navigate("/admin/dashboard");
+      } else if (targetRole === "organizer") {
+        navigate("/organizer/dashboard");
+      } else {
+        navigate("/employee/dashboard");
+      }
 
     } catch (err) {
-      // Catch backend errors (e.g., wrong password or unauthorized cross-portal login attempt)
-      const errorMsg = err.response?.data?.message || "Login failed. Please check your credentials.";
+      const errorMsg = typeof err === "string" 
+        ? err 
+        : err?.response?.data?.message || err?.message || "Login failed. Please check your credentials.";
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -73,7 +83,14 @@ export default function Login() {
           <form onSubmit={handleLogin} className="auth-form">
             <div className="auth-input-group">
               <label>Email address</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Enter your email" required />
+              <input 
+                type="email" 
+                name="email" 
+                value={form.email} 
+                onChange={handleChange} 
+                placeholder="Enter your email" 
+                required 
+              />
             </div>
 
             <div className="auth-input-group">
@@ -126,9 +143,9 @@ export default function Login() {
               {loading ? "Authenticating..." : `Sign in as ${activeRole}`}
             </button>
 
-            {activeRole === "Employee" && (
+            {(activeRole === "Employee" || activeRole === "Organizer") && (
               <p className="auth-prompt">
-                Don't have an account? <Link to="/register">Sign up</Link>
+                Don't have an account? <Link to={`/register?role=${activeRole}`}>Sign up as {activeRole}</Link>
               </p>
             )}
           </form>

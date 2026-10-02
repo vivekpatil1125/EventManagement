@@ -1,30 +1,25 @@
-﻿using System;
+﻿using EventManagement.Models;
+using EventSync.Models;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace EventSync.Models
+namespace EventManagement.Models
 {
+    [Table("Attendances")]
     public class Attendance
     {
         [Key]
-        public string Id { get; set; } = $"ATT-{Guid.NewGuid().ToString()[..2].ToUpper()}";
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        [Required]
-        [StringLength(100)]
-        public string Name { get; set; } = string.Empty;
-
-        [Required]
+        public string? Name { get; set; }
         public int EventId { get; set; }
+        public string? TicketCode { get; set; }
+        public bool CheckedIn { get; set; }
+        public string? Time { get; set; }
 
         [ForeignKey("EventId")]
-        public Event? Event { get; set; }
-
-        [Required]
-        [StringLength(50)]
-        public string TicketCode { get; set; } = string.Empty; // e.g., TX-VIP-001
-
-        public bool CheckedIn { get; set; } = false;
-
-        public string Time { get; set; } = "--:--";
+        public Event Event { get; set; } = null!;
     }
 }

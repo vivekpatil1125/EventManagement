@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAuth } from "../../context/AuthContext"; // Import AuthContext
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const authContext = useAuth ? useAuth() : {};
+  const user = authContext?.user;
+
   const [stats, setStats] = useState({
     users: 0,
     events: 0,
@@ -12,14 +17,72 @@ export default function AdminDashboard() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState({
+    name: '',
+    email: '',
+    role: ''
+  });
 
   const BACKEND_URL = "https://localhost:7165"; // Match your C# backend port
 
+  // Dynamic user details fallback
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const displayName = 
+    user?.fullName || 
+    user?.FullName || 
+    user?.name || 
+    currentUser.name || 
+    storedUser?.fullName || 
+    storedUser?.FullName || 
+    "System Admin";
+
+  const displayRole = 
+    user?.role || 
+    user?.Role || 
+    currentUser.role || 
+    storedUser?.role || 
+    storedUser?.Role || 
+    "Administrator";
+
   useEffect(() => {
+    // Extract user details from JWT token if available
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const payload = JSON.parse(jsonPayload);
+
+        const extractedName =
+          payload.name ||
+          payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+          payload.unique_name ||
+          payload.sub ||
+          "System Admin";
+
+        const extractedRole =
+          payload.role ||
+          payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+          "Administrator";
+
+        setCurrentUser({
+          name: extractedName,
+          email: payload.email || "",
+          role: extractedRole
+        });
+      } catch (err) {
+        console.error("Failed to decode token:", err);
+      }
+    }
+
     const fetchAdminMetrics = async () => {
       try {
-        const token = localStorage.getItem("token");
         const config = {
           headers: { Authorization: `Bearer ${token}` }
         };
@@ -59,7 +122,9 @@ export default function AdminDashboard() {
       <aside className="db-sidebar">
         <div>
           <div className="sidebar-header">
-            <div className="logo-box">A</div>
+            <div className="logo-box">
+              {displayName ? displayName.charAt(0).toUpperCase() : "A"}
+            </div>
             <div className="logo-text">
               <h1>EventSync</h1>
               <span>ADMINISTRATOR</span>
@@ -108,11 +173,19 @@ export default function AdminDashboard() {
               <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="text" placeholder="Search database..." className="search-input" />
             </div>
+
+            {/* DYNAMIC ADMIN USER PROFILE */}
             <div className="user-profile">
-              <div className="avatar" style={{ background: "#dc2626" }}>A</div>
+              <div className="avatar" style={{ background: "#dc2626" }}>
+                {displayName ? displayName.charAt(0).toUpperCase() : "A"}
+              </div>
               <div>
-                <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#0f172a" }}>System Admin</div>
-                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600" }}>Superuser</div>
+                <div style={{ fontSize: "0.9rem", fontWeight: "700", color: "#0f172a" }}>
+                  {displayName}
+                </div>
+                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "capitalize" }}>
+                  {displayRole}
+                </div>
               </div>
             </div>
           </div>
