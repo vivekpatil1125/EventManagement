@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function CertificatesTab() {
   const [certificates, setCertificates] = useState([]);
@@ -25,7 +26,15 @@ export default function CertificatesTab() {
       }
 
       const data = await response.json();
-      const earned = data.filter(r => r.isCheckedIn === true || r.IsCheckedIn === true);
+      
+      // Filter for records where check-in is true (handling both camelCase and PascalCase properties)
+      const earned = data.filter(r => 
+        r.isCheckedIn === true || 
+        r.IsCheckedIn === true || 
+        r.checkedIn === true || 
+        r.CheckedIn === true
+      );
+      
       setCertificates(earned);
     } catch (err) {
       console.error('Failed to fetch certificates:', err);
@@ -39,10 +48,17 @@ export default function CertificatesTab() {
     try {
       const canvas = await html2canvas(certRef.current, { scale: 2, useCORS: true });
       const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `Certificate-${selectedCert?.event?.title || 'Event'}.png`;
-      link.click();
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imageRatio = canvas.width / canvas.height;
+      const pageRatio = pageWidth / pageHeight;
+      const imageWidth = imageRatio > pageRatio ? pageWidth : pageHeight * imageRatio;
+      const imageHeight = imageRatio > pageRatio ? pageWidth / imageRatio : pageHeight;
+      pdf.addImage(image, 'PNG', (pageWidth - imageWidth) / 2, (pageHeight - imageHeight) / 2, imageWidth, imageHeight);
+      const eventTitle = selectedCert?.event?.title || selectedCert?.event?.Title || selectedCert?.title || 'Event';
+      const safeEventTitle = eventTitle.replace(/[^a-z0-9-]/gi, '-');
+      pdf.save(`Certificate-of-Participation-${safeEventTitle}.pdf`);
     } catch (err) {
       console.error('Error generating certificate image:', err);
     }
@@ -62,22 +78,28 @@ export default function CertificatesTab() {
         </p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-          {certificates.map((cert) => (
-            <div key={cert.id} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f8fafc' }}>
-              <div>
-                <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Verified</span>
-                <h4 style={{ margin: '12px 0 8px 0', color: '#0f172a', fontSize: '16px' }}>{cert.event?.title || 'Corporate Event'}</h4>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 4px 0' }}>Issued to: <strong>{cert.name}</strong></p>
-                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Date: {new Date(cert.checkedInAt || cert.registrationDate).toLocaleDateString()}</p>
+          {certificates.map((cert) => {
+            const eventTitle = cert.event?.title || cert.title || 'Corporate Event';
+            const attendeeName = cert.attendeeName || cert.name || cert.userName || 'Attendee';
+            const checkInDate = cert.checkedInAt || cert.registrationDate || cert.date;
+
+            return (
+              <div key={cert.id || cert.ticketCode} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#f8fafc' }}>
+                <div>
+                  <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Verified</span>
+                  <h4 style={{ margin: '12px 0 8px 0', color: '#0f172a', fontSize: '16px' }}>{eventTitle}</h4>
+                  <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 4px 0' }}>Issued to: <strong>{attendeeName}</strong></p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Date: {checkInDate ? new Date(checkInDate).toLocaleDateString() : 'N/A'}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedCert(cert)}
+                  style={{ marginTop: '16px', backgroundColor: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
+                >
+                  View & Download Certificate
+                </button>
               </div>
-              <button 
-                onClick={() => setSelectedCert(cert)}
-                style={{ marginTop: '16px', backgroundColor: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}
-              >
-                View & Download Certificate
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -86,7 +108,7 @@ export default function CertificatesTab() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', maxWidth: '850px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             
-            {/* Hidden/Rendered Certificate Design Template */}
+            {/* Rendered Certificate Design Template */}
             <div 
               ref={certRef}
               style={{ 
@@ -108,25 +130,27 @@ export default function CertificatesTab() {
                 {/* Header */}
                 <div>
                   <h5 style={{ margin: 0, letterSpacing: '3px', textTransform: 'uppercase', color: '#475569', fontSize: '14px', fontWeight: 600 }}>EventSync Academy & Certification</h5>
-                  <h1 style={{ margin: '15px 0 5px 0', fontSize: '36px', color: '#0f172a', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>Certificate of Completion</h1>
+                  <h1 style={{ margin: '15px 0 5px 0', fontSize: '36px', color: '#0f172a', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>Certificate of Participation</h1>
                   <p style={{ margin: 0, fontStyle: 'italic', color: '#64748b', fontSize: '14px' }}>This is proudly presented to</p>
                 </div>
 
                 {/* Recipient */}
                 <div>
                   <h2 style={{ borderBottom: '2px solid #94a3b8', display: 'inline-block', minWidth: '400px', margin: '10px 0', fontSize: '30px', color: '#1e293b', paddingBottom: '5px' }}>
-                    {selectedCert.name}
+                    {selectedCert.attendeeName || selectedCert.name || selectedCert.userName || 'Attendee'}
                   </h2>
                   <p style={{ margin: '10px 0 0 0', color: '#475569', fontSize: '15px', lineHeight: '1.5' }}>
-                    for successfully participating and completing the verified event requirements for<br/>
-                    <strong style={{ fontSize: '20px', color: '#0f172a' }}>{selectedCert.event?.title || 'Professional Event'}</strong>
+                    for verified participation in<br/>
+                    <strong style={{ fontSize: '20px', color: '#0f172a' }}>{selectedCert.event?.title || selectedCert.event?.Title || selectedCert.title || 'Professional Event'}</strong>
                   </p>
                 </div>
 
                 {/* Footer Signatures */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 40px' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{new Date(selectedCert.checkedInAt).toLocaleDateString()}</p>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                      {new Date(selectedCert.checkedInAt || selectedCert.registrationDate || Date.now()).toLocaleDateString()}
+                    </p>
                     <div style={{ width: '150px', height: '1px', background: '#94a3b8', margin: '5px auto' }}></div>
                     <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>Date Issued</p>
                   </div>
@@ -157,7 +181,7 @@ export default function CertificatesTab() {
                 onClick={handleDownload}
                 style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
               >
-                Download Certificate (PNG)
+                Download Certificate (PDF)
               </button>
             </div>
 
@@ -167,5 +191,3 @@ export default function CertificatesTab() {
     </section>
   );
 }
-
-//npm install html2canvas

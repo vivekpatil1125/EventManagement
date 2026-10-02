@@ -82,7 +82,9 @@ namespace EventManagement.Controllers
 
             var registration = await _context.Registrations
                 .Include(r => r.Event)
-                .FirstOrDefaultAsync(r => r.Id == eventId || (isNumeric && r.EventId == numericEventId));
+                .FirstOrDefaultAsync(r =>
+                    (r.Id == eventId || (isNumeric && r.EventId == numericEventId)) &&
+                    r.Email == userEmail);
 
             var targetEvent = registration?.Event ?? await _context.Events
                 .FirstOrDefaultAsync(e => (isNumeric && e.Id == numericEventId) || e.Id.ToString() == eventId);
@@ -99,7 +101,20 @@ namespace EventManagement.Controllers
 
             if (existingAttendance != null && existingAttendance.CheckedIn)
             {
-                return BadRequest(new { message = "Already checked in for this event." });
+                if (registration != null && !registration.IsCheckedIn)
+                {
+                    registration.IsCheckedIn = true;
+                    registration.CheckedInAt = DateTime.TryParse(existingAttendance.Time, out var checkedInAt)
+                        ? checkedInAt
+                        : DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new
+                {
+                    message = "Already checked in for this event.",
+                    checkedInAt = registration?.CheckedInAt ?? DateTime.UtcNow
+                });
             }
 
             if (existingAttendance != null)
@@ -123,9 +138,19 @@ namespace EventManagement.Controllers
                 _context.Attendances.Add(attendance);
             }
 
+            if (registration != null)
+            {
+                registration.IsCheckedIn = true;
+                registration.CheckedInAt = DateTime.UtcNow;
+            }
+
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Successfully checked in for the event!", checkedInAt = DateTime.UtcNow });
+            return Ok(new
+            {
+                message = "Successfully checked in for the event!",
+                checkedInAt = registration?.CheckedInAt ?? DateTime.UtcNow
+            });
         }
 
         // PUT: api/attendance/{id}/toggle
