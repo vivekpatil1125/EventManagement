@@ -57,6 +57,12 @@ export const attendanceService = {
     toggleCheckIn: (id) => api.put(`/attendance/${id}/toggle`),
 };
 
+export const reviewService = {
+    getAll: () => api.get('/reviews'),
+    getCheckedInEvents: () => api.get('/reviews/checked-in-events'),
+    create: (data) => api.post('/reviews', data),
+};
+
 export const announcementService = {
     getAll: () => api.get('/announcements'),
     create: (data) => api.post('/announcements', data),

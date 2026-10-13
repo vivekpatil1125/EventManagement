@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { eventService, registrationService, attendanceService, announcementService } from '../../services/api';
+import { eventService, registrationService, attendanceService, announcementService, reviewService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import ReportExportPanel from './ReportExportPanel';
 import './OrganizerDashboard.css';
 
 export default function OrganizerDashboard() {
@@ -43,6 +44,7 @@ export default function OrganizerDashboard() {
   const [events, setEvents] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
 
   // Modal / Form States
@@ -80,11 +82,12 @@ export default function OrganizerDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [eventsRes, regsRes, attRes, announceRes] = await Promise.allSettled([
+      const [eventsRes, regsRes, attRes, announceRes, reviewsRes] = await Promise.allSettled([
         eventService.getAll(),
         registrationService.getAll(),
         attendanceService.getAll(),
-        announcementService.getAll()
+        announcementService.getAll(),
+        reviewService.getAll()
       ]);
 
       const failedEndpoints = [];
@@ -92,6 +95,7 @@ export default function OrganizerDashboard() {
       if (regsRes.status === 'rejected') failedEndpoints.push('Registrations (/api/registrations)');
       if (attRes.status === 'rejected') failedEndpoints.push('Attendance (/api/attendance)');
       if (announceRes.status === 'rejected') failedEndpoints.push('Announcements (/api/announcements)');
+      if (reviewsRes.status === 'rejected') failedEndpoints.push('Reviews (/api/reviews)');
 
       if (failedEndpoints.length > 0) {
         setError(`Data sync partial failure on: ${failedEndpoints.join(', ')}.`);
@@ -101,6 +105,7 @@ export default function OrganizerDashboard() {
       const rawRegs = regsRes.status === 'fulfilled' && Array.isArray(regsRes.value.data) ? regsRes.value.data : [];
       const rawAtt = attRes.status === 'fulfilled' && Array.isArray(attRes.value.data) ? attRes.value.data : [];
       const rawAnnounce = announceRes.status === 'fulfilled' && Array.isArray(announceRes.value.data) ? announceRes.value.data : [];
+      const rawReviews = reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
 
       const orgDeptLower = (userDepartment || '').trim().toLowerCase();
       
@@ -115,7 +120,7 @@ export default function OrganizerDashboard() {
 
       // Safe filtering for registrations
       const filteredDeptRegs = rawRegs.filter(r => {
-        if (deptEventIds.size === 0) return true;
+        if (!orgDeptLower) return true;
         const evId = Number(r.eventId || r.EventId || r.event?.id || r.Event?.Id);
         return deptEventIds.has(evId);
       });
@@ -135,9 +140,10 @@ export default function OrganizerDashboard() {
       }
 
       setEvents(filteredDeptEvents);
-      setRegistrations(filteredDeptRegs.length > 0 ? filteredDeptRegs : rawRegs);
+      setRegistrations(filteredDeptRegs);
       setAttendance(filteredDeptAtt);
       setAnnouncements(rawAnnounce);
+      setReviews(rawReviews);
 
       if (filteredDeptEvents.length > 0) {
         setAnnounceData(prev => ({ 
@@ -551,6 +557,7 @@ export default function OrganizerDashboard() {
           {activeTab === 'Registrations' && (
             <section className="events-panel">
               <h3 style={{ marginBottom: '14px' }}>Ticket Registration Workspace ({userDepartment || 'All'})</h3>
+              <ReportExportPanel {...{ events, registrations, attendance, department: userDepartment }} />
               <div style={{ overflowX: 'auto', backgroundColor: '#fff', borderRadius: '12px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                   <thead>
@@ -591,6 +598,7 @@ export default function OrganizerDashboard() {
           {activeTab === 'Attendance' && (
             <section className="events-panel">
               <h3 style={{ marginBottom: '14px' }}>Admission Gate Roster ({userDepartment || 'All'})</h3>
+              <ReportExportPanel {...{ events, registrations, attendance, department: userDepartment }} />
               <div style={{ overflowX: 'auto', backgroundColor: '#fff', borderRadius: '12px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                   <thead>
@@ -600,6 +608,7 @@ export default function OrganizerDashboard() {
                       <th style={{ padding: '14px 16px' }}>Access Token</th>
                       <th style={{ padding: '14px 16px' }}>Gate Status</th>
                       <th style={{ padding: '14px 16px' }}>Check-in Log</th>
+                      <th style={{ padding: '14px 16px' }}>Reviews</th>
                       <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
@@ -611,7 +620,18 @@ export default function OrganizerDashboard() {
                       const attendeeName = att.name || att.Name || att.attendeeName || att.AttendeeName || 'Registered Attendee';
                       const attendeeEmail = att.email || att.Email || att.attendeeEmail || att.AttendeeEmail || '';
                       const eventTitle = att.event?.title || att.Event?.Title || att.eventTitle || 'Department Event';
+                      const eventId = Number(att.eventId ?? att.EventId ?? att.event?.id ?? att.Event?.Id);
                       const ticketCode = att.ticketCode || att.TicketCode || attId;
+                      const employeeEmail = attendeeEmail || (attendeeName.includes('@') ? attendeeName : '');
+                      const attendeeReview = reviews.find(review => {
+                        const reviewEventId = Number(review.eventId ?? review.EventId);
+                        const reviewEmail = (review.employeeEmail || review.EmployeeEmail || '').toLowerCase();
+                        const reviewName = (review.employeeName || review.EmployeeName || '').toLowerCase();
+                        return reviewEventId === eventId && (
+                          (employeeEmail && reviewEmail === employeeEmail.toLowerCase()) ||
+                          reviewName === attendeeName.toLowerCase()
+                        );
+                      });
 
                       return (
                         <tr key={attId} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -634,6 +654,24 @@ export default function OrganizerDashboard() {
                             </span>
                           </td>
                           <td style={{ padding: '16px', color: '#64748b', fontWeight: '500' }}>{checkInTime}</td>
+                          <td style={{ padding: '16px', minWidth: '190px' }}>
+                            {attendeeReview ? (
+                              <div className="attendance-review">
+                                <div className="attendance-review-rating" aria-label={`${attendeeReview.rating ?? attendeeReview.Rating} out of 5 stars`}>
+                                  {'★'.repeat(Number(attendeeReview.rating ?? attendeeReview.Rating))}
+                                  <span>{'★'.repeat(5 - Number(attendeeReview.rating ?? attendeeReview.Rating))}</span>
+                                  <strong>{attendeeReview.rating ?? attendeeReview.Rating}/5</strong>
+                                </div>
+                                {Boolean(attendeeReview.comment || attendeeReview.Comment) && (
+                                  <div className="attendance-review-comment" title={attendeeReview.comment || attendeeReview.Comment}>
+                                    {attendeeReview.comment || attendeeReview.Comment}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="attendance-review-empty">No review yet</span>
+                            )}
+                          </td>
                           <td style={{ padding: '16px', textAlign: 'right' }}>
                             <button 
                               type="button"

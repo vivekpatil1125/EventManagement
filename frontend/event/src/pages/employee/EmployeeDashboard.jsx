@@ -13,6 +13,7 @@ import TicketsTab from './tabs/TicketsTab';
 import CertificatesTab from './tabs/CertificatesTab';
 import NotificationsTab from './tabs/NotificationsTab';
 import ProfileTab from './tabs/ProfileTab';
+import ReviewsTab from './tabs/ReviewsTab';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -430,6 +431,7 @@ const fetchDashboardData = async () => {
               { name: 'Discover', icon: 'M14 10l-4 4m0 0l-4-4m4 4V4M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z' },
               { name: 'My Events', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
               { name: 'Tickets', icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z' },
+              { name: 'Reviews', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.96a1 1 0 00.95.69h4.163c.969 0 1.371 1.24.588 1.81l-3.37 2.449a1 1 0 00-.364 1.118l1.287 3.96c.3.922-.755 1.688-1.54 1.118l-3.37-2.449a1 1 0 00-1.175 0l-3.37 2.449c-.784.57-1.838-.196-1.539-1.118l1.287-3.96a1 1 0 00-.364-1.118L4.05 9.387c-.783-.57-.38-1.81.588-1.81H8.8a1 1 0 00.951-.69l1.298-3.96z' },
               { name: 'Certificates', icon: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z' },
               { name: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' }
             ].map((item) => (
@@ -522,6 +524,7 @@ const fetchDashboardData = async () => {
               {activeTab === 'Discover' && <DiscoverTab {...{ filteredDiscover, handleOpenRegistrationModal, formatDateString, getTypeTheme }} />}
               {activeTab === 'My Events' && <MyEventsTab {...{ filteredRegistered, formatDateString, getTypeTheme }} />}
               {activeTab === 'Tickets' && <TicketsTab {...{ filteredRegistered, qrCodes, handleDownloadPDF, handleCheckIn, actionLoading, formatDateString, getTypeTheme }} />}
+              {activeTab === 'Reviews' && <ReviewsTab />}
               {activeTab === 'Certificates' && <CertificatesTab />}
               {activeTab === 'Notifications' && <NotificationsTab {...{ filteredNotifications, markNotificationAsRead }} />}
               {activeTab === 'Profile' && <ProfileTab {...{ currentUser }} />}

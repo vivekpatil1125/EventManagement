@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace EventManagement.Migrations
 {
     /// <inheritdoc />
-    public partial class AddEventSyncCoreTables : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,8 +18,10 @@ namespace EventManagement.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Capacity = table.Column<int>(type: "int", nullable: false),
                     Registered = table.Column<int>(type: "int", nullable: false),
                     Type = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
@@ -29,6 +31,24 @@ namespace EventManagement.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Events", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Role = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -58,11 +78,11 @@ namespace EventManagement.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     EventId = table.Column<int>(type: "int", nullable: false),
-                    TicketCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    TicketCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CheckedIn = table.Column<bool>(type: "bit", nullable: false),
-                    Time = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Time = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -80,12 +100,14 @@ namespace EventManagement.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     EventId = table.Column<int>(type: "int", nullable: false),
-                    Tier = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    Tier = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RegistrationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false)
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsCheckedIn = table.Column<bool>(type: "bit", nullable: false),
+                    CheckedInAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -112,6 +134,12 @@ namespace EventManagement.Migrations
                 name: "IX_Registrations_EventId",
                 table: "Registrations",
                 column: "EventId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Email",
+                table: "Users",
+                column: "Email",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -125,6 +153,9 @@ namespace EventManagement.Migrations
 
             migrationBuilder.DropTable(
                 name: "Registrations");
+
+            migrationBuilder.DropTable(
+                name: "Users");
 
             migrationBuilder.DropTable(
                 name: "Events");

@@ -163,8 +163,45 @@ namespace EventManagement.Controllers
                 return NotFound(new { message = "Attendance record not found." });
             }
 
+            // Toggle attendance flag
             record.CheckedIn = !record.CheckedIn;
             record.Time = DateTime.UtcNow.ToString("O");
+
+            // Try to synchronize registration state when possible
+            try
+            {
+                // TicketCode may contain the registration.Id
+                Registration? reg = null;
+
+                if (!string.IsNullOrWhiteSpace(record.TicketCode))
+                {
+                    reg = await _context.Registrations.FirstOrDefaultAsync(r => r.Id == record.TicketCode && r.EventId == record.EventId);
+                }
+
+                // Fallback: match by email/name + event
+                if (reg == null && !string.IsNullOrWhiteSpace(record.Name))
+                {
+                    reg = await _context.Registrations.FirstOrDefaultAsync(r => (r.Email == record.Name || r.Name == record.Name) && r.EventId == record.EventId);
+                }
+
+                if (reg != null)
+                {
+                    if (record.CheckedIn)
+                    {
+                        reg.IsCheckedIn = true;
+                        reg.CheckedInAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        reg.IsCheckedIn = false;
+                        reg.CheckedInAt = null;
+                    }
+                }
+            }
+            catch
+            {
+                // ignore registration sync failures to avoid breaking the attendance toggle
+            }
 
             await _context.SaveChangesAsync();
             return Ok(record);

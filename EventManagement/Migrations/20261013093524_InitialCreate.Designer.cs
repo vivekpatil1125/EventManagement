@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EventManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260930174934_AddCheckInColumnsToRegistration")]
-    partial class AddCheckInColumnsToRegistration
+    [Migration("20261013093524_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -27,17 +27,22 @@ namespace EventManagement.Migrations
 
             modelBuilder.Entity("EventManagement.Models.Attendance", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<bool>("CheckedIn")
+                        .HasColumnType("bit");
 
                     b.Property<int>("EventId")
                         .HasColumnType("int");
 
-                    b.Property<string>("EventTitle")
-                        .IsRequired()
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TicketCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Time")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");

@@ -55,6 +55,16 @@ namespace EventManagement.Controllers
                 return Ok(userRegistrations);
             }
 
+            if (currentUser != null && currentUser.Role == UserRole.Admin)
+            {
+                var allRegistrations = await _context.Registrations
+                    .Include(r => r.Event)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return Ok(allRegistrations);
+            }
+
             // Fallback safety: if user isn't found in database entity but we have a token email, filter by it anyway!
             if (!string.IsNullOrEmpty(userEmail))
             {
@@ -138,6 +148,32 @@ namespace EventManagement.Controllers
 
                 registration.IsCheckedIn = true;
                 registration.CheckedInAt = DateTime.UtcNow;
+
+                // Ensure an Attendance record is created/updated for this check-in
+                var existingAttendance = await _context.Attendances
+                    .FirstOrDefaultAsync(a => a.EventId == registration.EventId && (a.TicketCode == registration.Id || a.Name == registration.Email));
+
+                if (existingAttendance != null)
+                {
+                    existingAttendance.CheckedIn = true;
+                    existingAttendance.Time = DateTime.UtcNow.ToString("O");
+                    existingAttendance.Name = registration.Email ?? registration.Name;
+                    existingAttendance.TicketCode = registration.Id;
+                }
+                else
+                {
+                    var attendance = new Attendance
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        EventId = registration.EventId,
+                        Name = registration.Email ?? registration.Name,
+                        TicketCode = registration.Id,
+                        CheckedIn = true,
+                        Time = DateTime.UtcNow.ToString("O")
+                    };
+
+                    _context.Attendances.Add(attendance);
+                }
 
                 await _context.SaveChangesAsync();
 
