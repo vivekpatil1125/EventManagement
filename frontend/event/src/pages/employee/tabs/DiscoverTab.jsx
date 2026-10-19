@@ -3,7 +3,7 @@ import React from 'react';
 export default function DiscoverTab({ filteredDiscover, handleOpenRegistrationModal, formatDateString, getTypeTheme }) {
   return (
     <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
-      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Available Organization Events (From Database)</h3>
+      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Discover events</h3>
       {filteredDiscover.length === 0 ? (
         <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>No new events available for registration.</p>
       ) : (

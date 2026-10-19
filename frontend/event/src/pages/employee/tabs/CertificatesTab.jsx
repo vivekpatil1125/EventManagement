@@ -65,12 +65,12 @@ export default function CertificatesTab() {
   };
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading certificates...</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Preparing your certificates…</div>;
   }
 
   return (
     <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
-      <h3 style={{ marginBottom: '16px', fontWeight: 700, color: '#1e293b' }}>Earned Participation Certificates</h3>
+      <h3 style={{ marginBottom: '16px', fontWeight: 700, color: '#1e293b' }}>My certificates</h3>
       
       {certificates.length === 0 ? (
         <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>

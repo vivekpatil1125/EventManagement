@@ -64,7 +64,7 @@ export default function Login() {
     <div className="auth-wrapper">
       <div className="auth-left">
         <div className="auth-form-container">
-          <h1 className="auth-title">EventSync Portal</h1>
+          <h1 className="auth-title">Welcome back</h1>
           <p className="auth-subtitle">Welcome back! Please enter your details.</p>
 
           <div className="auth-role-tabs">

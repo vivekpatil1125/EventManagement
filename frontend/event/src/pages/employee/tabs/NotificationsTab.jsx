@@ -3,7 +3,7 @@ import React from 'react';
 export default function NotificationsTab({ filteredNotifications, markNotificationAsRead }) {
   return (
     <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
-      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Organization Announcements & Notifications</h3>
+      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Announcements</h3>
       {filteredNotifications.length === 0 ? (
         <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>No notifications found.</p>
       ) : (

@@ -153,7 +153,7 @@ export default function OrganizerDashboard() {
       }
     } catch (err) {
       console.error("Dashboard synchronization failure:", err);
-      setError("Failed to communicate with the database.");
+      setError("We couldn’t connect to the service. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -251,7 +251,7 @@ export default function OrganizerDashboard() {
       setIsModalOpen(false);
       fetchDashboardData();
     } catch (err) {
-      alert(err.response?.data?.detail || err.response?.data?.message || "Error saving event configuration schema.");
+      alert(err.response?.data?.detail || err.response?.data?.message || "We couldn’t save the event. Please try again.");
     }
   };
 
@@ -298,7 +298,7 @@ export default function OrganizerDashboard() {
   const handleAnnouncementSubmit = async (e) => {
     e.preventDefault();
     if (!announceData.targetEventId) {
-      alert("Please ensure at least one active department event exists before dispatching notifications.");
+      alert("Create an event before sending an announcement.");
       return;
     }
 
@@ -313,7 +313,7 @@ export default function OrganizerDashboard() {
       setIsAnnounceModalOpen(false);
       fetchDashboardData();
     } catch (err) {
-      alert("Transmission failure when dispatching notification.");
+      alert("We couldn’t send the announcement. Please try again.");
     }
   };
 
@@ -404,7 +404,12 @@ export default function OrganizerDashboard() {
         <header className="db-header">
           <div className="header-title">
             <span>EVENTSYNC • {userDepartment ? userDepartment.toUpperCase() : 'GENERAL'}</span>
-            <h2>{activeTab === 'Dashboard' ? `Welcome, ${displayName}` : `Manage ${activeTab}`}</h2>
+            <h2>{activeTab === 'Dashboard' ? `Welcome, ${displayName}` : ({
+              Events: 'Event catalog',
+              Registrations: 'Registrations',
+              Attendance: 'Attendance',
+              Announcements: 'Announcements'
+            }[activeTab] || activeTab)}</h2>
           </div>
 
           <div className="header-actions">
@@ -444,7 +449,7 @@ export default function OrganizerDashboard() {
 
           {loading && (
             <div style={{ color: '#2563eb', padding: '12px 0', fontSize: '14px', fontWeight: '600', letterSpacing: '0.5px' }}>
-              🔄 Synchronizing database collections...
+              Loading your events and attendee updates…
             </div>
           )}
 
@@ -472,7 +477,7 @@ export default function OrganizerDashboard() {
               </section>
 
               <section className="events-panel">
-                <h3>{userDepartment || 'Active'} Events Pipeline</h3>
+                <h3>{userDepartment || 'Your'} events at a glance</h3>
                 <div className="events-grid">
                   {filteredEvents.map((event) => (
                     <div key={event.id} className="event-card">
@@ -509,7 +514,7 @@ export default function OrganizerDashboard() {
           {activeTab === 'Events' && (
             <section className="events-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3>{userDepartment || 'Active'} Event Catalog</h3>
+                <h3>{userDepartment || 'Your'} event catalog</h3>
                 <button onClick={openCreateModal} style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
                   + Add Event
                 </button>
@@ -556,7 +561,7 @@ export default function OrganizerDashboard() {
           {/* VIEW: REGISTRATIONS */}
           {activeTab === 'Registrations' && (
             <section className="events-panel">
-              <h3 style={{ marginBottom: '14px' }}>Ticket Registration Workspace ({userDepartment || 'All'})</h3>
+              <h3 style={{ marginBottom: '14px' }}>Event registrations</h3>
               <ReportExportPanel {...{ events, registrations, attendance, department: userDepartment }} />
               <div style={{ overflowX: 'auto', backgroundColor: '#fff', borderRadius: '12px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -597,7 +602,7 @@ export default function OrganizerDashboard() {
           {/* VIEW: ATTENDANCE & ADMISSION ROSTER */}
           {activeTab === 'Attendance' && (
             <section className="events-panel">
-              <h3 style={{ marginBottom: '14px' }}>Admission Gate Roster ({userDepartment || 'All'})</h3>
+              <h3 style={{ marginBottom: '14px' }}>Attendance records</h3>
               <ReportExportPanel {...{ events, registrations, attendance, department: userDepartment }} />
               <div style={{ overflowX: 'auto', backgroundColor: '#fff', borderRadius: '12px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -711,7 +716,7 @@ export default function OrganizerDashboard() {
           {activeTab === 'Announcements' && (
             <section className="events-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3>Broadcast Bulletin Feeds</h3>
+                <h3>Announcements</h3>
                 <button onClick={() => setIsAnnounceModalOpen(true)} style={{ backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
                   + Dispatch Notification
                 </button>
@@ -738,10 +743,10 @@ export default function OrganizerDashboard() {
 
       {/* MODAL: CREATE / EDIT */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#fff', width: '520px', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="app-modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="app-modal-card" style={{ backgroundColor: '#fff', width: '520px', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
-              {editingEvent ? 'Modify Event Settings' : `Deploy New ${userDepartment || ''} Event`}
+            {editingEvent ? 'Edit event' : `Create ${userDepartment ? `${userDepartment} ` : ''}event`}
             </h3>
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
@@ -803,7 +808,7 @@ export default function OrganizerDashboard() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Event Structure</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Event type</label>
                   <select 
                     value={formData.type} 
                     onChange={e => setFormData({...formData, type: e.target.value})} 
@@ -815,7 +820,7 @@ export default function OrganizerDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Deployment Status</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Event status</label>
                   <select 
                     value={formData.status} 
                     onChange={e => setFormData({...formData, status: e.target.value})} 
@@ -859,7 +864,7 @@ export default function OrganizerDashboard() {
                   type="submit" 
                   style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
                 >
-                  Save Configuration
+                  Save event
                 </button>
               </div>
             </form>
@@ -869,9 +874,9 @@ export default function OrganizerDashboard() {
 
       {/* MODAL: ANNOUNCEMENT */}
       {isAnnounceModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#fff', width: '480px', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Compose System Broadcast Notification</h3>
+        <div className="app-modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="app-modal-card" style={{ backgroundColor: '#fff', width: '480px', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Create an announcement</h3>
             <form onSubmit={handleAnnouncementSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Notification Subject Header</label>
@@ -884,7 +889,7 @@ export default function OrganizerDashboard() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Target Pipeline Scope</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Related event</label>
                 <select 
                   value={announceData.targetEventId} 
                   onChange={e => setAnnounceData({...announceData, targetEventId: e.target.value})} 
@@ -894,7 +899,7 @@ export default function OrganizerDashboard() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Broadcast Announcement Copy Content</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Message</label>
                 <textarea 
                   required 
                   rows="4" 
@@ -915,7 +920,7 @@ export default function OrganizerDashboard() {
                   type="submit" 
                   style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
                 >
-                  Deploy Transmission
+                  Send announcement
                 </button>
               </div>
             </form>

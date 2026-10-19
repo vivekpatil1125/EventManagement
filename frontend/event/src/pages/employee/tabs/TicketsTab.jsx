@@ -4,8 +4,8 @@ export default function TicketsTab({ filteredRegistered, qrCodes, handleDownload
   return (
     <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h3 style={{ margin: 0, fontWeight: 700 }}>Active Enterprise Entry Tickets</h3>
-        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Secure Corporate Passes</span>
+        <h3 style={{ margin: 0, fontWeight: 700 }}>My tickets</h3>
+        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Your event passes and check-in status</span>
       </div>
 
       {filteredRegistered.length === 0 ? (

@@ -119,7 +119,7 @@ export default function Register() {
       <div className="auth-left">
         <div className="auth-form-container">
           <h1 className="auth-title">Create Account</h1>
-          <p className="auth-subtitle">Join EventSync to explore and manage enterprise events.</p>
+          <p className="auth-subtitle">Create an account to discover events and manage your registrations.</p>
 
           {/* Role selector tabs for Employee and Organizer */}
           <div className="auth-role-tabs">

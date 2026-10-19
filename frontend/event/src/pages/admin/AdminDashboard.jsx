@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { BrowserQRCodeReader } from "@zxing/browser";
 import { reviewService } from "../../services/api";
 import { useAuth } from "../../context/AuthContext"; // Import AuthContext
 import './AdminDashboard.css';
@@ -21,6 +22,12 @@ export default function AdminDashboard() {
   const [announcementForm, setAnnouncementForm] = useState({ title: '', eventId: '', body: '' });
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanMessage, setScanMessage] = useState('');
+  const [scanMessageType, setScanMessageType] = useState('');
+  const scannerVideoRef = useRef(null);
+  const scanLockRef = useRef(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -171,7 +178,7 @@ export default function AdminDashboard() {
           announcements: announcementList.length
         });
       } catch (err) {
-        setError("Failed to fetch administrative records from database.");
+        setError("We couldn’t load the administration overview. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -179,6 +186,80 @@ export default function AdminDashboard() {
 
     fetchAdminMetrics();
   }, []);
+
+  const handleScannedQr = useCallback(async (rawValue) => {
+    const ticketMatch = rawValue.trim().match(/^ES-PASS:([^|]+)\|/);
+    if (!ticketMatch) {
+      setScanMessage('This QR code is not a valid EventSync employee pass.');
+      setScanMessageType('error');
+      return;
+    }
+
+    const registrationId = ticketMatch[1].trim();
+    setScanLoading(true);
+    setScanMessage('Verifying ticket and marking attendance...');
+    setScanMessageType('info');
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${BACKEND_URL}/api/registrations/${encodeURIComponent(registrationId)}/check-in`,
+        {},
+        { headers: { Authorization: ['Bearer', token].join(' ') } }
+      );
+      const checkedInAt = response.data.checkedInAt;
+      setRegistrations((current) => current.map((registration) =>
+        String(registration.id ?? registration.Id) === registrationId
+          ? { ...registration, isCheckedIn: true, IsCheckedIn: true, checkedInAt, CheckedInAt: checkedInAt }
+          : registration
+      ));
+      setScanMessage(response.data.message || 'Attendance marked successfully.');
+      setScanMessageType('success');
+    } catch (requestError) {
+      console.error('Failed to check in scanned ticket:', requestError);
+      setScanMessage(requestError.response?.data?.message || 'Unable to mark attendance for this ticket.');
+      setScanMessageType('error');
+    } finally {
+      setScanLoading(false);
+    }
+  }, [BACKEND_URL]);
+
+  useEffect(() => {
+    if (activeTab !== 'Check-in Scanner' || !scannerActive || !scannerVideoRef.current) return undefined;
+
+    const reader = new BrowserQRCodeReader();
+    let controls;
+    let disposed = false;
+    scanLockRef.current = false;
+    setScanMessage('Starting camera...');
+    setScanMessageType('info');
+
+    reader.decodeFromVideoDevice(undefined, scannerVideoRef.current, (result) => {
+      if (!result || scanLockRef.current) return;
+      scanLockRef.current = true;
+      setScannerActive(false);
+      handleScannedQr(result.getText());
+    }).then((videoControls) => {
+      controls = videoControls;
+      if (disposed) controls.stop();
+      else if (!scanLockRef.current) {
+        setScanMessage('Camera ready. Hold the employee pass QR code in front of the camera.');
+        setScanMessageType('info');
+      }
+    }).catch((scannerError) => {
+      if (disposed) return;
+      console.error('Unable to start QR scanner:', scannerError);
+      setScannerActive(false);
+      setScanMessage('Camera access is unavailable. Allow camera access and try again.');
+      setScanMessageType('error');
+    });
+
+    return () => {
+      disposed = true;
+      controls?.stop();
+      reader.reset();
+    };
+  }, [activeTab, scannerActive, handleScannedQr]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -296,6 +377,10 @@ export default function AdminDashboard() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Events
             </button>
+            <button className={`nav-btn ${activeTab === 'Check-in Scanner' ? 'active' : ''}`} onClick={() => setActiveTab('Check-in Scanner')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v2M14 20h2M20 19v2"/></svg>
+              Check-in Scanner
+            </button>
             <button className={`nav-btn ${activeTab === 'Announcements' ? 'active' : ''}`} onClick={() => setActiveTab('Announcements')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               Announcements
@@ -314,13 +399,21 @@ export default function AdminDashboard() {
       <main className="db-main">
         <header className="db-header" style={{ padding: "16px 32px" }}>
           <div className="header-title">
-            <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", letterSpacing: "0.05em" }}>EVENTSYNC CONTROL PANEL</span>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: "800", margin: "2px 0 0 0", color: "#0f172a" }}>{activeTab === 'Dashboard' ? 'System Overview' : activeTab}</h2>
+            <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", letterSpacing: "0.05em" }}>EVENTSYNC · ADMINISTRATION</span>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: "800", margin: "2px 0 0 0", color: "#0f172a" }}>
+              {{
+                Dashboard: 'Overview',
+                'Event Schedules': 'Event schedule',
+                Events: 'Department reports',
+                'Check-in Scanner': 'Attendance check-in',
+                Announcements: 'Announcements'
+              }[activeTab] || activeTab}
+            </h2>
           </div>
           <div className="header-actions">
             <div className="search-container">
               <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" placeholder="Search database..." className="search-input" />
+              <input type="text" placeholder="Search records..." className="search-input" />
             </div>
 
             {/* DYNAMIC ADMIN USER PROFILE */}
@@ -403,6 +496,42 @@ export default function AdminDashboard() {
               <div className="admin-report-footer">
                 <span>Report updated from current events, registrations and attendee reviews.</span>
                 <button type="button" onClick={() => setActiveTab('Announcements')}>Create announcement</button>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'Check-in Scanner' && (
+            <section className="admin-qr-checkin">
+              <div className="admin-events-heading">
+                <div>
+                  <span className="admin-events-eyebrow">ATTENDANCE</span>
+                  <h3>Scan employee pass</h3>
+                  <p>Scan an EventSync ticket QR code to mark the registration as checked in.</p>
+                </div>
+              </div>
+              <div className="admin-qr-scanner-card">
+                {scannerActive
+                  ? <video className="admin-qr-scanner-video" ref={scannerVideoRef} autoPlay muted playsInline />
+                  : <div className="admin-qr-scanner-placeholder">Camera scanner is stopped.</div>}
+                <div className="admin-qr-scanner-controls">
+                  <button
+                    type="button"
+                    className="admin-qr-start-button"
+                    disabled={scannerActive || scanLoading}
+                    onClick={() => {
+                      setScanMessage('');
+                      setScannerActive(true);
+                    }}
+                  >
+                    {scanLoading ? 'Processing check-in...' : scannerActive ? 'Scanner active' : 'Start scanner'}
+                  </button>
+                  {scannerActive && (
+                    <button type="button" className="admin-qr-stop-button" onClick={() => setScannerActive(false)}>
+                      Stop scanner
+                    </button>
+                  )}
+                </div>
+                {scanMessage && <p className={`admin-qr-scan-message ${scanMessageType}`} role="status">{scanMessage}</p>}
               </div>
             </section>
           )}

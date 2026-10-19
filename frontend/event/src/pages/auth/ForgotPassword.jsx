@@ -37,7 +37,7 @@ export default function ForgotPassword() {
       {/* Left Column matching your CSS layout */}
       <div className="auth-left">
         <div className="auth-form-container">
-          <h1 className="auth-title">Reset Password</h1>
+          <h1 className="auth-title">Reset your password</h1>
           <p className="auth-subtitle">
             Enter your work email and we'll send you a link to reset your password.
           </p>

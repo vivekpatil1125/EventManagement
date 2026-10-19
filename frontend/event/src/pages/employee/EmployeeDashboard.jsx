@@ -58,11 +58,12 @@ export default function EmployeeDashboard() {
           const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
           const payload = JSON.parse(jsonPayload);
 
-          const extractedName = payload.name || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload.unique_name || payload.sub || 'Employee';
-          const extractedEmail = payload.email || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || 'employee@eventsync.com';
+          const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const extractedName = storedUser.fullName || storedUser.FullName || storedUser.name || payload.name || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload.unique_name || payload.sub || 'Employee';
+          const extractedEmail = storedUser.email || storedUser.Email || payload.email || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || 'employee@eventsync.com';
           const extractedRole = payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'Employee';
 
-          setCurrentUser({ name: extractedName, email: extractedEmail, role: extractedRole });
+          setCurrentUser({ name: extractedName, email: extractedEmail, role: extractedRole, department: storedUser.department || storedUser.Department || '' });
           setFormData(prev => ({ ...prev, name: extractedName, email: extractedEmail }));
         }
       } catch (err) {
@@ -283,7 +284,7 @@ const fetchDashboardData = async () => {
         Notes: formData.notes
       }, getAuthConfig());
       
-      alert('Registration successful and saved to database!');
+      alert('Your event registration is confirmed.');
       setShowModal(false);
       setSelectedEvent(null);
       fetchDashboardData(); 
@@ -375,6 +376,39 @@ const fetchDashboardData = async () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+  };
+
+  const handleProfileUpdated = (updatedProfile) => {
+    setCurrentUser((current) => ({
+      ...current,
+      name: updatedProfile.name,
+      email: updatedProfile.email,
+      role: updatedProfile.role,
+      department: updatedProfile.department
+    }));
+    setFormData((current) => ({
+      ...current,
+      name: updatedProfile.name,
+      email: updatedProfile.email
+    }));
+
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify({
+        ...storedUser,
+        name: updatedProfile.name,
+        fullName: updatedProfile.name,
+        FullName: updatedProfile.name,
+        email: updatedProfile.email,
+        Email: updatedProfile.email,
+        department: updatedProfile.department,
+        Department: updatedProfile.department,
+        role: updatedProfile.role,
+        Role: updatedProfile.role
+      }));
+    } catch (storageError) {
+      console.error('Unable to update cached profile details:', storageError);
+    }
   };
 
   const formatDateString = (rawDate) => {
@@ -469,9 +503,18 @@ const fetchDashboardData = async () => {
       <main className="db-main" style={{ backgroundColor: '#ffffff' }}>
         <header className="db-header" style={{ height: '80px', padding: '0 40px', borderBottom: '1px solid #f1f5f9', background: '#fff' }}>
           <div className="header-title">
-            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, letterSpacing: '0.1em' }}>EVENTSYNC</span>
+            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, letterSpacing: '0.1em' }}>YOUR EVENT SPACE</span>
             <h2 style={{ margin: '2px 0 0 0', fontSize: '1.5rem', fontWeight: 800 }}>
-              {activeTab === 'Dashboard' ? 'My Dashboard' : activeTab}
+              {{
+                Dashboard: 'Overview',
+                Discover: 'Discover events',
+                'My Events': 'My events',
+                Tickets: 'My tickets',
+                Reviews: 'Ratings & reviews',
+                Certificates: 'My certificates',
+                Notifications: 'Announcements',
+                Profile: 'My profile'
+              }[activeTab] || activeTab}
             </h2>
           </div>
 
@@ -516,7 +559,7 @@ const fetchDashboardData = async () => {
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '350px', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              <p style={{ color: '#64748b', fontWeight: 600 }}>Syncing organization catalog from database...</p>
+              <p style={{ color: '#64748b', fontWeight: 600 }}>Getting your events and updates ready…</p>
             </div>
           ) : (
             <>
@@ -527,7 +570,7 @@ const fetchDashboardData = async () => {
               {activeTab === 'Reviews' && <ReviewsTab />}
               {activeTab === 'Certificates' && <CertificatesTab />}
               {activeTab === 'Notifications' && <NotificationsTab {...{ filteredNotifications, markNotificationAsRead }} />}
-              {activeTab === 'Profile' && <ProfileTab {...{ currentUser }} />}
+              {activeTab === 'Profile' && <ProfileTab {...{ currentUser }} onProfileUpdated={handleProfileUpdated} />}
             </>
           )}
         </div>
@@ -535,8 +578,8 @@ const fetchDashboardData = async () => {
 
       {/* REGISTRATION MODAL */}
       {showModal && selectedEvent && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div className="app-modal-backdrop" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="app-modal-card" style={{ backgroundColor: '#fff', borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: 700 }}>Register for Event</h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#64748b' }}>Confirm your registration details for <strong>{selectedEvent.title}</strong>.</p>
             

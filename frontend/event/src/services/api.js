@@ -50,6 +50,11 @@ export const registrationService = {
     delete: (id) => api.delete(`/registrations/${id}`),
 };
 
+export const userService = {
+    getProfile: () => api.get('/users/profile'),
+    updateProfile: (data) => api.put('/users/profile', data),
+};
+
 export const attendanceService = {
     // Line 55: matches AttendanceController
     getAll: () => api.get('/attendance'),

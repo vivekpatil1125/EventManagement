@@ -6,9 +6,9 @@ export default function DashboardTab({ currentUser, stats, upcomingEvents, setAc
       <section className="hero-banner" style={{ display: 'flex', background: 'linear-gradient(90deg, #1d4ed8 0%, #172554 100%)', borderRadius: '16px', overflow: 'hidden', color: 'white', minHeight: '220px', marginBottom: '24px' }}>
         <div className="hero-left" style={{ flex: '1.2', padding: '36px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', gap: '12px' }}>
           <span className="welcome-tag" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', color: '#93c5fd', textTransform: 'uppercase' }}>WELCOME BACK</span>
-          <h3 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Hey {currentUser.name.split(' ')[0]} 👋</h3>
+          <h3 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Welcome back, {currentUser.name.split(' ')[0]}</h3>
           <p style={{ margin: '4px 0 12px 0', fontSize: '0.95rem', color: '#93c5fd', lineHeight: 1.5, maxWidth: '480px' }}>
-            Here's what's happening across your organization. Discover upcoming database events and manage your attendance.
+            Stay up to date with upcoming events, your registrations, and attendance.
           </p>
           <button className="explore-btn" onClick={() => setActiveTab('Discover')} style={{ backgroundColor: 'white', color: '#1e3a8a', padding: '10px 20px', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>
             Explore events

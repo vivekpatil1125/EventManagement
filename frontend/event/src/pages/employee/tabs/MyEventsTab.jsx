@@ -3,7 +3,7 @@ import React from 'react';
 export default function MyEventsTab({ filteredRegistered, formatDateString, getTypeTheme }) {
   return (
     <section className="events-panel" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0' }}>
-      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>Your Registered Corporate Passes</h3>
+      <h3 style={{ marginBottom: '16px', fontWeight: 700 }}>My events</h3>
       {filteredRegistered.length === 0 ? (
         <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>You haven't registered for any active events yet.</p>
       ) : (

@@ -628,6 +628,92 @@
   color: #334155;
 }
 
+.admin-qr-checkin {
+  color: #172033;
+}
+
+.admin-qr-scanner-card {
+  width: min(100%, 720px);
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgb(15 23 42 / 3%);
+}
+
+.admin-qr-scanner-video,
+.admin-qr-scanner-placeholder {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  max-height: 480px;
+  border-radius: 10px;
+  background: #0f172a;
+  object-fit: cover;
+}
+
+.admin-qr-scanner-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.admin-qr-scanner-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-qr-scanner-controls button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-qr-start-button {
+  color: #fff;
+  background: #166534;
+}
+
+.admin-qr-stop-button {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.admin-qr-scanner-controls button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.admin-qr-scan-message {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.admin-qr-scan-message.info {
+  color: #1e40af;
+  background: #eff6ff;
+}
+
+.admin-qr-scan-message.success {
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.admin-qr-scan-message.error {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
 .admin-report,
 .admin-department-reports,
 .admin-announcements {

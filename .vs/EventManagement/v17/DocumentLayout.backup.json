@@ -7,16 +7,16 @@
       "RelativeMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|solutionrelative:eventmanagement\\controllers\\registrationscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Migrations\\20261013093524_InitialCreate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:EventManagement\\Migrations\\20261013093524_InitialCreate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|c:\\users\\dell-5490\\source\\repos\\eventmanagement\\eventmanagement\\models\\announcement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|solutionrelative:eventmanagement\\models\\announcement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|c:\\users\\dell-5490\\source\\repos\\eventmanagement\\eventmanagement\\controllers\\attendancecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|solutionrelative:eventmanagement\\controllers\\attendancecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|c:\\users\\dell-5490\\source\\repos\\eventmanagement\\eventmanagement\\migrations\\20261013093524_initialcreate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A11729ED-7B37-4C72-BFE5-21789303A956}|EventManagement\\EventManagement.csproj|solutionrelative:eventmanagement\\migrations\\20261013093524_initialcreate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,34 +26,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 3,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "AttendanceController.cs",
-              "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\AttendanceController.cs",
-              "RelativeDocumentMoniker": "EventManagement\\Controllers\\AttendanceController.cs",
-              "ToolTip": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\AttendanceController.cs",
-              "RelativeToolTip": "EventManagement\\Controllers\\AttendanceController.cs",
-              "ViewState": "AgIAAM0AAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-13T16:15:11.982Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "RegistrationsController.cs",
-              "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\RegistrationsController.cs",
-              "RelativeDocumentMoniker": "EventManagement\\Controllers\\RegistrationsController.cs",
-              "ToolTip": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\RegistrationsController.cs",
-              "RelativeToolTip": "EventManagement\\Controllers\\RegistrationsController.cs",
-              "ViewState": "AgIAAIgAAAAAAAAAAAAuwJYAAABEAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-13T09:50:44.59Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{56df62a4-05a3-4e5b-aa1a-99371ccfb997}"
@@ -64,7 +38,32 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
+              "Title": "AttendanceController.cs",
+              "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\AttendanceController.cs",
+              "RelativeDocumentMoniker": "EventManagement\\Controllers\\AttendanceController.cs",
+              "ToolTip": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\AttendanceController.cs",
+              "RelativeToolTip": "EventManagement\\Controllers\\AttendanceController.cs",
+              "ViewState": "AgIAAM0AAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-13T16:15:11.982Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RegistrationsController.cs",
+              "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\RegistrationsController.cs",
+              "RelativeDocumentMoniker": "EventManagement\\Controllers\\RegistrationsController.cs",
+              "ToolTip": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Controllers\\RegistrationsController.cs",
+              "RelativeToolTip": "EventManagement\\Controllers\\RegistrationsController.cs",
+              "ViewState": "AgIAAIgAAAAAAAAAAAAuwJYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-13T09:50:44.59Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "20261013093524_InitialCreate.cs",
               "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Migrations\\20261013093524_InitialCreate.cs",
               "RelativeDocumentMoniker": "EventManagement\\Migrations\\20261013093524_InitialCreate.cs",
@@ -72,12 +71,11 @@
               "RelativeToolTip": "EventManagement\\Migrations\\20261013093524_InitialCreate.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-13T09:35:25.182Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-13T09:35:25.182Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "Announcement.cs",
               "DocumentMoniker": "C:\\Users\\Dell-5490\\source\\repos\\EventManagement\\EventManagement\\Models\\Announcement.cs",
               "RelativeDocumentMoniker": "EventManagement\\Models\\Announcement.cs",
@@ -85,8 +83,7 @@
               "RelativeToolTip": "EventManagement\\Models\\Announcement.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-13T09:25:39.744Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-13T09:25:39.744Z"
             }
           ]
         }
