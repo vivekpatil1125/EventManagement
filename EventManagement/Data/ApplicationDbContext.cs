@@ -18,6 +18,7 @@ namespace EventManagement.Data
         public DbSet<Registration> Registrations { get; set; } = null!;
         public DbSet<Attendance> Attendances { get; set; } = null!;
         public DbSet<Announcement> Announcements { get; set; } = null!;
+        public DbSet<AnnouncementRead> AnnouncementReads { get; set; } = null!;
         public DbSet<EventReview> EventReviews { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,6 +47,21 @@ namespace EventManagement.Data
                 .HasOne(a => a.Event)
                 .WithMany()
                 .HasForeignKey(a => a.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AnnouncementRead>()
+                .HasKey(read => new { read.AnnouncementId, read.UserId });
+
+            modelBuilder.Entity<AnnouncementRead>()
+                .HasOne<Announcement>()
+                .WithMany()
+                .HasForeignKey(read => read.AnnouncementId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AnnouncementRead>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(read => read.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<EventReview>()

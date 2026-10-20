@@ -13,6 +13,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using System.Security.Cryptography;
+using System.Net;
 
 namespace EventManagement.Services
 {
@@ -131,45 +133,116 @@ namespace EventManagement.Services
         public async Task ForgotPasswordAsync(ForgotPasswordDto dto)
         {
             // Verify user exists in the database
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email.Trim());
             if (user == null)
             {
                 // Silently return to prevent email enumeration attacks
                 return;
             }
 
+            var apiKey = _configuration["SendGrid:ApiKey"];
+            var fromEmail = _configuration["SendGrid:FromEmail"];
+            if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(fromEmail))
+            {
+                throw new InvalidOperationException("SendGrid:ApiKey and SendGrid:FromEmail must be configured.");
+            }
+
+            var fromName = _configuration["SendGrid:FromName"] ?? "EventSync Security";
+            var frontendUrl = (_configuration["FrontendUrl"] ?? "http://localhost:5173").TrimEnd('/');
+            var resetToken = CreatePasswordResetToken(user);
+            var resetLink = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+            var safeResetLink = WebUtility.HtmlEncode(resetLink);
+
+            var client = new SendGridClient(apiKey);
+            var message = MailHelper.CreateSingleEmail(
+                new EmailAddress(fromEmail, fromName),
+                new EmailAddress(user.Email),
+                "Reset Your Password",
+                $"Use this link to reset your EventSync password: {resetLink}",
+                $"<h3>Password Reset Request</h3><p>Use the link below to set a new password. This link expires in 30 minutes.</p><p><a href=\"{safeResetLink}\">Reset your password</a></p>");
+
+            var response = await client.SendEmailAsync(message);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Body.ReadAsStringAsync();
+                throw new InvalidOperationException($"SendGrid rejected the email ({response.StatusCode}): {errorBody}");
+            }
+        }
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            ClaimsPrincipal principal;
             try
             {
-                string apiKey = _configuration["SendGrid:ApiKey"] ?? throw new Exception("SendGrid ApiKey missing.");
-                string fromEmail = _configuration["SendGrid:FromEmail"] ?? throw new Exception("SendGrid FromEmail missing.");
-                string fromName = _configuration["SendGrid:FromName"] ?? "EventSync Security";
-
-                string resetToken = Guid.NewGuid().ToString();
-                string frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:5173";
-                string resetLink = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}&email={Uri.EscapeDataString(dto.Email)}";
-
-                var client = new SendGridClient(apiKey);
-                var from = new EmailAddress(fromEmail, fromName);
-                var to = new EmailAddress(dto.Email);
-
-                string subject = "Reset Your Password";
-                string htmlContent = $"<h3>Password Reset Request</h3>" +
-                                     $"<p>Click the link below to set a new password for your EventSync account:</p>" +
-                                     $"<p><a href='{resetLink}' style='color:#7f56d9;font-weight:bold;text-decoration:none;'>Reset Password Now</a></p>";
-
-                var msg = MailHelper.CreateSingleEmail(from, to, subject, null, htmlContent);
-                var response = await client.SendEmailAsync(msg);
-
-                if (!response.IsSuccessStatusCode)
+                var issuer = $"{_configuration["Jwt:Issuer"] ?? "YourIssuer"}:PasswordReset";
+                var audience = $"{_configuration["Jwt:Audience"] ?? "YourAudience"}:PasswordReset";
+                var signingKey = _configuration["Jwt:Key"] ?? "YourSuperSecretKeyWithAtLeast16BytesLength";
+                principal = new JwtSecurityTokenHandler().ValidateToken(dto.Token, new TokenValidationParameters
                 {
-                    string errorBody = await response.Body.ReadAsStringAsync();
-                    throw new Exception($"SendGrid API rejected request: {response.StatusCode} - {errorBody}");
-                }
+                    ValidateIssuer = true,
+                    ValidIssuer = issuer,
+                    ValidateAudience = true,
+                    ValidAudience = audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
+                }, out _);
             }
-            catch (Exception ex)
+            catch (SecurityTokenException)
             {
-                throw new Exception($"Email system error: {ex.Message}");
+                return false;
             }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+
+            if (principal.FindFirst("purpose")?.Value != "password_reset" ||
+                !int.TryParse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            {
+                return false;
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            var tokenFingerprint = principal.FindFirst("password_hash")?.Value;
+            if (user == null || tokenFingerprint != GetPasswordHashFingerprint(user.PasswordHash))
+            {
+                return false;
+            }
+
+            user.PasswordHash = _passwordHasher.HashPassword(user, dto.NewPassword);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private string CreatePasswordResetToken(User user)
+        {
+            var issuer = $"{_configuration["Jwt:Issuer"] ?? "YourIssuer"}:PasswordReset";
+            var audience = $"{_configuration["Jwt:Audience"] ?? "YourAudience"}:PasswordReset";
+            var signingKey = _configuration["Jwt:Key"] ?? "YourSuperSecretKeyWithAtLeast16BytesLength";
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("purpose", "password_reset"),
+                new Claim("password_hash", GetPasswordHashFingerprint(user.PasswordHash))
+            };
+            var credentials = new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+                SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                issuer,
+                audience,
+                claims,
+                expires: DateTime.UtcNow.AddMinutes(30),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private static string GetPasswordHashFingerprint(string passwordHash)
+        {
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash)));
         }
     }
 }

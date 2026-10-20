@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace EventManagement.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class newmigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -96,6 +96,31 @@ namespace EventManagement.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "EventReviews",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    EmployeeEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    EventId = table.Column<int>(type: "int", nullable: false),
+                    EventName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Rating = table.Column<int>(type: "int", nullable: false),
+                    Comment = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EventReviews", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EventReviews_Events_EventId",
+                        column: x => x.EventId,
+                        principalTable: "Events",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Registrations",
                 columns: table => new
                 {
@@ -131,6 +156,12 @@ namespace EventManagement.Migrations
                 column: "EventId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_EventReviews_EventId_EmployeeEmail",
+                table: "EventReviews",
+                columns: new[] { "EventId", "EmployeeEmail" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Registrations_EventId",
                 table: "Registrations",
                 column: "EventId");
@@ -150,6 +181,9 @@ namespace EventManagement.Migrations
 
             migrationBuilder.DropTable(
                 name: "Attendances");
+
+            migrationBuilder.DropTable(
+                name: "EventReviews");
 
             migrationBuilder.DropTable(
                 name: "Registrations");

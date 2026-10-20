@@ -37,6 +37,16 @@ const authService = {
         }
     },
 
+    resetPassword: async ({ token, newPassword }) => {
+        try {
+            const response = await api.post('/auth/reset-password', { token, newPassword });
+            return response.data;
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.response?.data || error.message;
+            throw errorMessage;
+        }
+    },
+
     /**
      * Logs in a user by translating form credentials to backend DTO properties
      */

@@ -8,5 +8,6 @@ namespace EventManagement.Interfaces
         Task<object> RegisterAsync(RegisterDto dto);
         Task<object> LoginAsync(LoginDto dto);
         Task ForgotPasswordAsync(ForgotPasswordDto dto);
+        Task<bool> ResetPasswordAsync(ResetPasswordDto dto);
     }
 }

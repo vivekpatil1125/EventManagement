@@ -96,8 +96,19 @@ const fetchDashboardData = async () => {
   setError('');
 
   try {
+    let department = currentUser.department || '';
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      department = String(storedUser.department || storedUser.Department || department).trim();
+    } catch (storageError) {
+      console.error('Unable to read cached employee department:', storageError);
+    }
+
     const requests = await Promise.allSettled([
-      axios.get(`${BACKEND_URL}/api/events`, getAuthConfig()),
+      axios.get(`${BACKEND_URL}/api/events`, {
+        ...getAuthConfig(),
+        params: department ? { department } : {}
+      }),
       axios.get(`${BACKEND_URL}/api/registrations`, getAuthConfig()),
       axios.get(`${BACKEND_URL}/api/announcements`, getAuthConfig())
     ]);
@@ -110,7 +121,13 @@ const fetchDashboardData = async () => {
         ? eventsResult.value.data
         : [];
 
-      const discoverEvents = rawEvents.map(e => ({
+      const departmentEvents = rawEvents.filter(e => {
+        const eventDepartment = (e.department || e.Department || '').trim().toLowerCase();
+        return eventDepartment === 'all departments' ||
+          (department && eventDepartment === department.toLowerCase());
+      });
+
+      const discoverEvents = departmentEvents.map(e => ({
         id: e.id ?? e.Id ?? e.ID,
         title: e.title || e.Title || e.Name || 'Untitled Event',
         description: e.description || e.Description || '',
@@ -119,6 +136,7 @@ const fetchDashboardData = async () => {
         capacity: e.capacity ?? e.Capacity ?? 0,
         registeredCount: e.registered ?? e.Registered ?? 0,
         type: e.type || e.Type || 'CONFERENCE',
+        department: e.department || e.Department || 'General',
         status: e.status || e.Status || 'PUBLISHED'
       }));
 
@@ -225,7 +243,7 @@ const fetchDashboardData = async () => {
           a.Body ||
           '',
         timestamp: a.timestamp || a.Timestamp || '',
-        unread: true
+        unread: !(a.isRead ?? a.IsRead ?? false)
       }));
 
       setNotifications(mappedAnnouncements);
@@ -365,11 +383,12 @@ const fetchDashboardData = async () => {
   };
 
   const markNotificationAsRead = async (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
     try {
       await axios.put(`${BACKEND_URL}/api/announcements/${id}/read`, {}, getAuthConfig());
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
     } catch (err) {
-      console.warn('Notification status update skipped on server:', err);
+      console.error('Unable to save notification read status:', err);
+      setError('Could not mark this notification as read. Please try again.');
     }
   };
 

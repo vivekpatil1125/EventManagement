@@ -14,6 +14,7 @@ export default function DiscoverTab({ filteredDiscover, handleOpenRegistrationMo
                 <span className={`tag ${getTypeTheme(e.type)}`}>{e.type}</span>
                 <h4 style={{ margin: '12px 0 6px 0', fontSize: '1.1rem', fontWeight: 700 }}>{e.title}</h4>
                 <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{formatDateString(e.date)} | {e.location || 'TBD'}</p>
+                {e.department && <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#64748b' }}>Department: {e.department}</p>}
                 {e.description && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#475569', lineHeight: 1.4 }}>{e.description}</p>}
                 <div style={{ marginTop: '10px', fontSize: '12px', color: '#64748b' }}>
                   <span>Capacity: <strong>{e.capacity}</strong></span> | <span>Registered: <strong>{e.registeredCount}</strong></span>

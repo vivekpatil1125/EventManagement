@@ -3,6 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EventSync.Models
 {
+    public static class EventDepartments
+    {
+        public const string AllDepartments = "All Departments";
+    }
+
     public class Event
     {
         public int Id { get; set; }

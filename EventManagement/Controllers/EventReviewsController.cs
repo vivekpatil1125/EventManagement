@@ -48,7 +48,8 @@ namespace EventManagement.Controllers
             {
                 reviews = reviews.Where(r => _context.Events.Any(e =>
                     e.Id == r.EventId &&
-                    e.Department == user.Department));
+                    (e.Department == user.Department ||
+                     e.Department == EventDepartments.AllDepartments)));
             }
 
             var results = await reviews

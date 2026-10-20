@@ -5,6 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import ReportExportPanel from './ReportExportPanel';
 import './OrganizerDashboard.css';
 
+const ALL_DEPARTMENTS = 'All Departments';
+
+const getTodayDateInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function OrganizerDashboard() {
   const navigate = useNavigate();
   const authContext = useAuth ? useAuth() : {};
@@ -51,6 +61,7 @@ export default function OrganizerDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [formError, setFormError] = useState('');
   
   const [formData, setFormData] = useState({
     title: '', 
@@ -111,7 +122,10 @@ export default function OrganizerDashboard() {
       
       // Filter events by department if specified
       const filteredDeptEvents = orgDeptLower
-        ? rawEvents.filter(e => ((e.department || e.Department || '').trim().toLowerCase() === orgDeptLower))
+        ? rawEvents.filter(e => {
+          const eventDepartment = (e.department || e.Department || '').trim().toLowerCase();
+          return eventDepartment === orgDeptLower || eventDepartment === ALL_DEPARTMENTS.toLowerCase();
+        })
         : rawEvents;
 
       const deptEventIds = new Set(
@@ -183,6 +197,7 @@ export default function OrganizerDashboard() {
 
   const openCreateModal = () => {
     setEditingEvent(null);
+    setFormError('');
     setFormData({
       title: '', 
       description: '',
@@ -199,6 +214,7 @@ export default function OrganizerDashboard() {
 
   const openEditModal = (event) => {
     setEditingEvent(event);
+    setFormError('');
     const cleanDate = event.date ? event.date.split('T')[0] : '';
     setFormData({
       title: event.title || '', 
@@ -217,6 +233,11 @@ export default function OrganizerDashboard() {
   // --- CRUD Mutations ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (!editingEvent && formData.date < getTodayDateInputValue()) {
+      setFormError('Event date cannot be in the past. Please choose today or a future date.');
+      return;
+    }
+
     try {
       const targetId = editingEvent ? Number(editingEvent.id ?? editingEvent.Id) : 0;
 
@@ -240,7 +261,7 @@ export default function OrganizerDashboard() {
         type: formData.type || 'CONFERENCE',
         status: formData.status || 'PUBLISHED',
         img: formData.img || '',
-        department: userDepartment || formData.department || 'HR'
+        department: formData.department || userDepartment || 'HR'
       };
 
       if (editingEvent) {
@@ -778,9 +799,22 @@ export default function OrganizerDashboard() {
                     type="date" 
                     required 
                     value={formData.date} 
-                    onChange={e => setFormData({...formData, date: e.target.value})} 
+                    onChange={e => {
+                      const date = e.target.value;
+                      setFormData({ ...formData, date });
+                      setFormError(
+                        !editingEvent && date && date < getTodayDateInputValue()
+                          ? 'Event date cannot be in the past. Please choose today or a future date.'
+                          : ''
+                      );
+                    }}
                     style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} 
                   />
+                  {formError && (
+                    <p role="alert" style={{ color: '#dc2626', fontSize: '13px', margin: '6px 0 0' }}>
+                      {formError}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Max Capacity</label>
@@ -834,12 +868,16 @@ export default function OrganizerDashboard() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Department</label>
-                <input 
-                  type="text" 
-                  disabled 
-                  value={userDepartment || 'General'} 
-                  style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc', color: '#64748b' }} 
-                />
+                <select
+                  value={formData.department}
+                  onChange={e => setFormData({ ...formData, department: e.target.value })}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff' }}
+                >
+                  <option value={userDepartment || formData.department || 'HR'}>
+                    {userDepartment || formData.department || 'HR'}
+                  </option>
+                  <option value={ALL_DEPARTMENTS}>{ALL_DEPARTMENTS}</option>
+                </select>
               </div>
 
               <div>

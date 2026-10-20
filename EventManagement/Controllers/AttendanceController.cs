@@ -42,7 +42,9 @@ namespace EventManagement.Controllers
             {
                 var departmentAttendance = await _context.Attendances
                     .Include(a => a.Event)
-                    .Where(a => a.Event != null && a.Event.Department == currentUser.Department)
+                    .Where(a => a.Event != null &&
+                        (a.Event.Department == currentUser.Department ||
+                         a.Event.Department == EventDepartments.AllDepartments))
                     .ToListAsync();
 
                 return Ok(departmentAttendance);

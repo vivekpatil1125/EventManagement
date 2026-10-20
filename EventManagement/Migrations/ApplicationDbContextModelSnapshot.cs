@@ -163,6 +163,24 @@ namespace EventManagement.Migrations
                     b.ToTable("Announcements");
                 });
 
+            modelBuilder.Entity("EventSync.Models.AnnouncementRead", b =>
+                {
+                    b.Property<int>("AnnouncementId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AnnouncementId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AnnouncementReads");
+                });
+
             modelBuilder.Entity("EventSync.Models.Event", b =>
                 {
                     b.Property<int>("Id")
@@ -285,6 +303,21 @@ namespace EventManagement.Migrations
                         .IsRequired();
 
                     b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("EventSync.Models.AnnouncementRead", b =>
+                {
+                    b.HasOne("EventSync.Models.Announcement", null)
+                        .WithMany()
+                        .HasForeignKey("AnnouncementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EventManagement.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EventSync.Models.Registration", b =>

@@ -1,5 +1,6 @@
 ﻿using EventManagement.Data;
 using EventManagement.DTOs;
+using EventManagement.Interfaces;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +18,20 @@ namespace EventManagement.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IAuthService _authService;
+        private readonly ILogger<AuthController> _logger;
         private readonly PasswordHasher<User> _passwordHasher = new PasswordHasher<User>();
 
-        public AuthController(ApplicationDbContext context, IConfiguration configuration)
+        public AuthController(
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            IAuthService authService,
+            ILogger<AuthController> logger)
         {
             _context = context;
             _configuration = configuration;
+            _authService = authService;
+            _logger = logger;
         }
 
         private string GenerateJwtToken(User user)
@@ -145,13 +154,46 @@ namespace EventManagement.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null)
+            if (string.IsNullOrWhiteSpace(_configuration["SendGrid:ApiKey"]) ||
+                string.IsNullOrWhiteSpace(_configuration["SendGrid:FromEmail"]))
             {
-                return Ok(new { message = "If the email is registered, password reset instructions have been sent." });
+                _logger.LogError("Password reset email is unavailable because SendGrid configuration is missing.");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "Password reset email is not configured on the server. Contact the administrator."
+                });
             }
 
-            return Ok(new { message = "Password reset instructions have been sent to your email." });
+            try
+            {
+                await _authService.ForgotPasswordAsync(dto);
+                return Ok(new { message = "If the email is registered, password reset instructions have been sent." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email.");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "Password reset email could not be sent. Please try again later."
+                });
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var reset = await _authService.ResetPasswordAsync(dto);
+            if (!reset)
+            {
+                return BadRequest(new { message = "The password reset link is invalid or expired." });
+            }
+
+            return Ok(new { message = "Your password has been reset. You can now sign in." });
         }
     }
 }

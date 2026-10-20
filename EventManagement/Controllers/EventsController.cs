@@ -32,7 +32,9 @@ namespace EventManagement.Controllers
                 if (!string.IsNullOrWhiteSpace(department))
                 {
                     var dept = department.Trim().ToLower();
-                    query = query.Where(e => (e.Department ?? "").ToLower() == dept);
+                    query = query.Where(e =>
+                        (e.Department ?? "").ToLower() == dept ||
+                        e.Department == EventDepartments.AllDepartments);
                 }
 
                 var result = await query.Select(e => new
@@ -89,6 +91,11 @@ namespace EventManagement.Controllers
         [HttpPost]
         public async Task<IActionResult> PostEvent([FromBody] Event @event)
         {
+            if (@event.Date.Date < DateTime.Today)
+            {
+                return BadRequest(new { message = "Event date cannot be in the past. Please choose today or a future date." });
+            }
+
             try
             {
                 @event.Title = @event.Title ?? "New Event";

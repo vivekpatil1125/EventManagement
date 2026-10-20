@@ -28,12 +28,61 @@ namespace EventManagement.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAnnouncements()
         {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                return Unauthorized(new { message = "Unable to identify the current user." });
+            }
+
             var announcements = await _context.Announcements
                 .AsNoTracking()
                 .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
 
+            var readAnnouncementIds = await _context.AnnouncementReads
+                .AsNoTracking()
+                .Where(read => read.UserId == currentUser.Id)
+                .Select(read => read.AnnouncementId)
+                .ToListAsync();
+
+            foreach (var announcement in announcements)
+            {
+                announcement.IsRead = readAnnouncementIds.Contains(announcement.Id);
+            }
+
             return Ok(announcements);
+        }
+
+        [HttpPut("{id}/read")]
+        public async Task<IActionResult> MarkAnnouncementAsRead(int id)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                return Unauthorized(new { message = "Unable to identify the current user." });
+            }
+
+            var announcementExists = await _context.Announcements
+                .AnyAsync(announcement => announcement.Id == id);
+            if (!announcementExists)
+            {
+                return NotFound(new { message = "Announcement not found." });
+            }
+
+            var alreadyRead = await _context.AnnouncementReads
+                .AnyAsync(read => read.AnnouncementId == id && read.UserId == currentUser.Id);
+            if (!alreadyRead)
+            {
+                _context.AnnouncementReads.Add(new AnnouncementRead
+                {
+                    AnnouncementId = id,
+                    UserId = currentUser.Id,
+                    ReadAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+
+            return NoContent();
         }
 
         // POST: api/announcements
@@ -68,7 +117,8 @@ namespace EventManagement.Controllers
             }
 
             if (currentUser.Role == UserRole.Organizer &&
-                !string.Equals(currentUser.Department, targetEvent.Department, StringComparison.OrdinalIgnoreCase))
+                !string.Equals(currentUser.Department, targetEvent.Department, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(targetEvent.Department, EventDepartments.AllDepartments, StringComparison.OrdinalIgnoreCase))
             {
                 return Forbid();
             }
@@ -107,6 +157,18 @@ namespace EventManagement.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private async Task<User?> GetCurrentUserAsync()
+        {
+            var userEmail = User.FindFirstValue(ClaimTypes.Email)
+                ?? User.FindFirstValue(ClaimTypes.Name)
+                ?? User.FindFirstValue("email")
+                ?? User.Identity?.Name;
+
+            return string.IsNullOrWhiteSpace(userEmail)
+                ? null
+                : await _context.Users.FirstOrDefaultAsync(user => user.Email == userEmail);
         }
     }
 }
