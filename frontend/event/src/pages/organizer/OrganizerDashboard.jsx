@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { BrowserQRCodeReader } from '@zxing/browser';
 import { eventService, registrationService, attendanceService, announcementService, reviewService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ReportExportPanel from './ReportExportPanel';
 import './OrganizerDashboard.css';
 
 const ALL_DEPARTMENTS = 'All Departments';
+const BACKEND_URL = "https://localhost:7165"; // Match your C# backend port
 
 const getTodayDateInputValue = () => {
   const today = new Date();
@@ -62,6 +65,15 @@ export default function OrganizerDashboard() {
   const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [formError, setFormError] = useState('');
+
+  // QR Check-in Scanner State
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanMessage, setScanMessage] = useState('');
+  const [scanMessageType, setScanMessageType] = useState('');
+  const scannerVideoRef = useRef(null);
+  const scanLockRef = useRef(false);
+  const fetchDashboardDataRef = useRef(null);
   
   const [formData, setFormData] = useState({
     title: '', 
@@ -173,9 +185,122 @@ export default function OrganizerDashboard() {
     }
   };
 
+  // Always point the ref at the latest fetch function (used by the scanner)
+  fetchDashboardDataRef.current = fetchDashboardData;
+
   useEffect(() => {
     fetchDashboardData();
   }, [userDepartment]);
+
+  // --- QR Check-in Scanner ---
+  const handleScannedQr = useCallback(async (rawValue) => {
+    const ticketMatch = rawValue.trim().match(/^ES-PASS:([^|]+)\|/);
+    if (!ticketMatch) {
+      setScanMessage('This QR code is not a valid EventSync employee pass.');
+      setScanMessageType('error');
+      return;
+    }
+
+    const registrationId = ticketMatch[1].trim();
+    setScanLoading(true);
+    setScanMessage('Verifying ticket and marking attendance...');
+    setScanMessageType('info');
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${BACKEND_URL}/api/registrations/${encodeURIComponent(registrationId)}/check-in`,
+        {},
+        { headers: { Authorization: ['Bearer', token].join(' ') } }
+      );
+      const checkedInAt = response?.data?.checkedInAt;
+      setRegistrations((current) => current.map((registration) =>
+        String(registration.id ?? registration.Id) === registrationId
+          ? { ...registration, isCheckedIn: true, IsCheckedIn: true, checkedInAt, CheckedInAt: checkedInAt }
+          : registration
+      ));
+      setScanMessage(response?.data?.message || 'Attendance marked successfully.');
+      setScanMessageType('success');
+
+      // Refresh attendance/registration data in the background, staying on this tab
+      if (fetchDashboardDataRef.current) {
+        fetchDashboardDataRef.current();
+      }
+    } catch (requestError) {
+      console.error('Failed to check in scanned ticket:', requestError);
+      setScanMessage(requestError.response?.data?.message || 'Unable to mark attendance for this ticket.');
+      setScanMessageType('error');
+    } finally {
+      setScanLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'Check-in Scanner' || !scannerActive || !scannerVideoRef.current) return undefined;
+
+    const reader = new BrowserQRCodeReader();
+    let controls = null;
+    let disposed = false;
+    scanLockRef.current = false;
+    setScanMessage('Starting camera...');
+    setScanMessageType('info');
+
+    const stopCamera = () => {
+      try {
+        if (controls && typeof controls.stop === 'function') controls.stop();
+      } catch (stopError) {
+        console.warn('Scanner stop warning:', stopError);
+      }
+      try {
+        if (typeof reader.reset === 'function') reader.reset();
+      } catch (resetError) {
+        console.warn('Scanner reset warning:', resetError);
+      }
+      // Release the camera stream explicitly
+      try {
+        const video = scannerVideoRef.current;
+        const stream = video && video.srcObject;
+        if (stream && typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      } catch (streamError) {
+        console.warn('Scanner stream warning:', streamError);
+      }
+    };
+
+    reader.decodeFromVideoDevice(undefined, scannerVideoRef.current, (result) => {
+      if (!result || scanLockRef.current || disposed) return;
+      scanLockRef.current = true;
+      const scannedText = result.getText();
+      setScannerActive(false);
+      handleScannedQr(scannedText);
+    }).then((videoControls) => {
+      controls = videoControls;
+      if (disposed) stopCamera();
+      else if (!scanLockRef.current) {
+        setScanMessage('Camera ready. Hold the employee pass QR code in front of the camera.');
+        setScanMessageType('info');
+      }
+    }).catch((scannerError) => {
+      if (disposed) return;
+      console.error('Unable to start QR scanner:', scannerError);
+      setScannerActive(false);
+      setScanMessage('Camera access is unavailable. Allow camera access and try again.');
+      setScanMessageType('error');
+    });
+
+    return () => {
+      disposed = true;
+      stopCamera();
+    };
+  }, [activeTab, scannerActive, handleScannedQr]);
+
+  // Stop the camera if the organizer leaves the scanner tab
+  useEffect(() => {
+    if (activeTab !== 'Check-in Scanner' && scannerActive) {
+      setScannerActive(false);
+    }
+  }, [activeTab, scannerActive]);
 
   // --- Analytical Calculations ---
   const confirmedRegs = registrations.filter(r => (r.status || r.Status || '').toUpperCase() === 'CONFIRMED' || (r.status || r.Status || '').toUpperCase() === 'PUBLISHED').length;
@@ -375,6 +500,12 @@ export default function OrganizerDashboard() {
     return status === 'PUBLISHED' ? 'bg-green-light' : 'bg-orange-light';
   };
 
+  const scanMessageStyles = {
+    success: { background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' },
+    error: { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' },
+    info: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }
+  };
+
   return (
     <div className="db-layout">
       {/* SIDEBAR PANEL */}
@@ -394,6 +525,7 @@ export default function OrganizerDashboard() {
               { name: 'Events', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
               { name: 'Registrations', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
               { name: 'Attendance', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2 2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+              { name: 'Check-in Scanner', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM20 14v2M14 20h2M20 19v2' },
               { name: 'Announcements', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' }
             ].map((item) => (
               <button
@@ -429,6 +561,7 @@ export default function OrganizerDashboard() {
               Events: 'Event catalog',
               Registrations: 'Registrations',
               Attendance: 'Attendance',
+              'Check-in Scanner': 'Attendance check-in',
               Announcements: 'Announcements'
             }[activeTab] || activeTab)}</h2>
           </div>
@@ -729,6 +862,83 @@ export default function OrganizerDashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </section>
+          )}
+
+          {/* VIEW: CHECK-IN SCANNER */}
+          {activeTab === 'Check-in Scanner' && (
+            <section className="events-panel">
+              <div style={{ marginBottom: '14px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em' }}>ATTENDANCE</span>
+                <h3 style={{ margin: '2px 0 4px 0' }}>Scan employee pass</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>
+                  Scan an EventSync ticket QR code to mark the registration as checked in.
+                </p>
+              </div>
+
+              <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', maxWidth: '560px' }}>
+                {scannerActive ? (
+                  <video
+                    ref={scannerVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    style={{ width: '100%', borderRadius: '12px', background: '#0f172a', aspectRatio: '4 / 3', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', aspectRatio: '4 / 3', borderRadius: '12px', background: '#f1f5f9', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px' }}>
+                    Camera scanner is stopped.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                  <button
+                    type="button"
+                    disabled={scannerActive || scanLoading}
+                    onClick={() => {
+                      setScanMessage('');
+                      setScannerActive(true);
+                    }}
+                    style={{
+                      backgroundColor: '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '10px 18px',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      cursor: scannerActive || scanLoading ? 'not-allowed' : 'pointer',
+                      opacity: scannerActive || scanLoading ? 0.6 : 1
+                    }}
+                  >
+                    {scanLoading ? 'Processing check-in...' : scannerActive ? 'Scanner active' : 'Start scanner'}
+                  </button>
+                  {scannerActive && (
+                    <button
+                      type="button"
+                      onClick={() => setScannerActive(false)}
+                      style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      Stop scanner
+                    </button>
+                  )}
+                </div>
+
+                {scanMessage && (
+                  <p
+                    role="status"
+                    style={{
+                      margin: '16px 0 0 0',
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      ...(scanMessageStyles[scanMessageType] || scanMessageStyles.info)
+                    }}
+                  >
+                    {scanMessage}
+                  </p>
+                )}
               </div>
             </section>
           )}
